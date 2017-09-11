@@ -71,13 +71,6 @@ def deconv2d(x, out_shape, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
         # deconv2d = tf.reshape(tf.nn.bias_add(deconv2d, b), deconv2d.get_shape())
         return deconv2d
 
-
-def linear(x, size, name, initializer=None, bias_init=0):
-    w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=initializer)
-    b = tf.get_variable(name + "/b", [size], initializer=tf.constant_initializer(bias_init))
-    return tf.matmul(x, w) + b
-
-
 def categorical_sample(logits, d):
     value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
     return tf.one_hot(value, d)
@@ -163,6 +156,11 @@ def doomHead(x):
     x = tf.nn.elu(linear(x, 256, "fc", normalized_columns_initializer(0.01)))
     return x
 
+def linear(x, size, name, initializer=None, bias_init=0):
+    w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=initializer)
+    b = tf.get_variable(name + "/b", [size], initializer=tf.constant_initializer(bias_init))
+    return tf.matmul(x, w) + b
+
 
 class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space, designHead='universe'):
@@ -243,7 +241,13 @@ class StateActionPredictor(object):
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
 
         # feature encoding: phi1, phi2: [None, LEN]
+        
+        # settings that don't belong here
         size = 256
+        num_imagined = 24
+        imagined_weight = 1
+        batch_size = tf.shape(s1)[0]
+
         if designHead == 'nips':
             phi1 = nipsHead(phi1)
             with tf.variable_scope(tf.get_variable_scope(), reuse=True):
@@ -265,24 +269,53 @@ class StateActionPredictor(object):
             with tf.variable_scope(tf.get_variable_scope(), reuse=True):
                 phi2 = universeHead(phi2)
 
-        # inverse model: g(phi1,phi2) -> a_inv: [None, ac_space]
-        g = tf.concat(1,[phi1, phi2])
-        g = tf.nn.relu(linear(g, size, "g1", normalized_columns_initializer(0.01)))
-        aindex = tf.argmax(asample, axis=1)  # aindex: [batch_size,]
-        logits = linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
-        self.invloss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
-                                        logits, aindex), name="invloss")
-        self.ainvprobs = tf.nn.softmax(logits, dim=-1)
-
         # forward model: f(phi1,asample) -> phi2
+        # predict next feature embedding
         # Note: no backprop to asample of policy: it is treated as fixed for predictor training
-        f = tf.concat(1, [phi1, asample])
-        f = tf.nn.relu(linear(f, size, "f1", normalized_columns_initializer(0.01)))
-        f = linear(f, phi1.get_shape()[1].value, "flast", normalized_columns_initializer(0.01))
+        def forward_model(phi1, asample):
+            f = tf.concat(1, [phi1, asample])
+            f = tf.nn.relu(linear(f, size, "f1", normalized_columns_initializer(0.01)))
+            return linear(f, phi1.get_shape()[1].value, "flast", normalized_columns_initializer(0.01))
+        self.forward_model = forward_model
+        f = forward_model(phi1, asample)
         self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(f, phi2)), name='forwardloss')
-        # self.forwardloss = 0.5 * tf.reduce_mean(tf.sqrt(tf.abs(tf.subtract(f, phi2))), name='forwardloss')
-        # self.forwardloss = cosineLoss(f, phi2, name='forwardloss')
         self.forwardloss = self.forwardloss * 288.0  # lenFeatures=288. Factored out to make hyperparams not depend on it.
+
+        # Imagine some actions and states that weren't encountered
+        imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
+        imagined_actions = tf.one_hot(imagined_action_idxs, ac_space)
+        imagined_start_states_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=batch_size, shape=[num_imagined])
+        imagined_phi1 = tf.gather(phi1, imagined_start_states_idxs)
+
+        # predict next state for imagined actions
+        with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+            imagined_phi2 = forward_model(imagined_phi1, imagined_actions)
+
+        # inverse model: g(phi1,phi2) -> a_inv: [None, ac_space]
+        # predict action from feature embedding of s1 and s2
+        def inverse_model(phi1, phi2):
+            g = tf.concat(1,[phi1, phi2])
+            g = tf.nn.relu(linear(g, size, "g1", normalized_columns_initializer(0.01)))
+            logits = linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
+        self.inverse_model = inverse_model
+
+        # compute inverse loss on real actions
+        logits = inverse_model(phi1, phi2)
+        self.ainvprobs = tf.nn.softmax(logits, dim=-1)
+        aindex = tf.argmax(asample, axis=1)  # aindex: [batch_size,]
+        self.invloss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                        logits, aindex), name="invloss_real")
+        
+
+        # compute inverse loss on imagined actions
+        with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+            imagined_logits = inverse_model(phi1, phi2)
+        self.ainvprobs_imagined = tf.nn.softmax(imagined_logits, dim=-1)
+        self.invloss_imagined = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                        imagined_logits, imagined_action_idxs), name="invloss_imagined")
+
+        self.invloss = tf.add(self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")
+        
 
         # variable list
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
