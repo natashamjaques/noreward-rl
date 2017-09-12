@@ -309,7 +309,7 @@ class StateActionPredictor(object):
 
         # compute inverse loss on imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-            imagined_logits = inverse_model(phi1, phi2)
+            imagined_logits = inverse_model(imagined_phi1, imagined_phi2)
         self.ainvprobs_imagined = tf.nn.softmax(imagined_logits, dim=-1)
         self.invloss_imagined = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                         imagined_logits, imagined_action_idxs), name="invloss_imagined")
