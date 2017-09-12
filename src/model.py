@@ -244,9 +244,9 @@ class StateActionPredictor(object):
         
         # settings that don't belong here
         size = 256
-        num_imagined = 24
         imagined_weight = 1
         batch_size = tf.shape(s1)[0]
+        num_imagined = batch_size
 
         if designHead == 'nips':
             phi1 = nipsHead(phi1)
