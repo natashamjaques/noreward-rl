@@ -329,6 +329,8 @@ class A3C(object):
                     tf.summary.scalar("model/predloss", self.predloss)
                     if 'action' in unsupType:
                         tf.summary.scalar("model/inv_loss", predictor.invloss)
+                        tf.summary.scalar("model/inv_loss_real", predictor.invloss_real)
+                        tf.summary.scalar("model/inv_loss_imagined", predictor.invloss_imagined)
                         tf.summary.scalar("model/forward_loss", predictor.forwardloss)
                     tf.summary.scalar("model/predgrad_global_norm", tf.global_norm(predgrads))
                     tf.summary.scalar("model/predvar_global_norm", tf.global_norm(predictor.var_list))
@@ -344,6 +346,8 @@ class A3C(object):
                     tf.scalar_summary("model/predloss", self.predloss)
                     if 'action' in unsupType:
                         tf.scalar_summary("model/inv_loss", predictor.invloss)
+                        tf.summary.scalar("model/inv_loss_real", predictor.invloss_real)
+                        tf.summary.scalar("model/inv_loss_imagined", predictor.invloss_imagined)
                         tf.scalar_summary("model/forward_loss", predictor.forwardloss)
                     tf.scalar_summary("model/predgrad_global_norm", tf.global_norm(predgrads))
                     tf.scalar_summary("model/predvar_global_norm", tf.global_norm(predictor.var_list))
