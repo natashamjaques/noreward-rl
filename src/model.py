@@ -246,7 +246,7 @@ class StateActionPredictor(object):
         size = 256
         imagined_weight = 1
         batch_size = tf.shape(phi1)[0]
-        num_imagined = 20
+        num_imagined = batch_size
 
         if designHead == 'nips':
             phi1 = nipsHead(phi1)
@@ -296,7 +296,7 @@ class StateActionPredictor(object):
         def inverse_model(phi1, phi2):
             g = tf.concat(1,[phi1, phi2])
             g = tf.nn.relu(linear(g, size, "g1", normalized_columns_initializer(0.01)))
-            logits = linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
+            return linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
         self.inverse_model = inverse_model
 
         # compute inverse loss on real actions
