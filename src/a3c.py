@@ -435,6 +435,7 @@ class A3C(object):
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]
             feed_dict[self.local_ap_network.s2] = batch.si[1:]
             feed_dict[self.local_ap_network.asample] = batch.a
+            print "shape of feed dict s1", np.shape(feed_dict[self.local_ap_network.s1])
 
         fetched = sess.run(fetches, feed_dict=feed_dict)
         if batch.terminal:
