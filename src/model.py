@@ -281,16 +281,6 @@ class StateActionPredictor(object):
         self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(f, phi2)), name='forwardloss')
         self.forwardloss = self.forwardloss * 288.0  # lenFeatures=288. Factored out to make hyperparams not depend on it.
 
-        # Imagine some actions and states that weren't encountered
-        imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
-        imagined_actions = tf.one_hot(imagined_action_idxs, ac_space)
-        imagined_start_states_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=batch_size, shape=[num_imagined])
-        imagined_phi1 = tf.gather(phi1, imagined_start_states_idxs)
-
-        # predict next state for imagined actions
-        with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-            imagined_phi2 = forward_model(imagined_phi1, imagined_actions)
-
         # inverse model: g(phi1,phi2) -> a_inv: [None, ac_space]
         # predict action from feature embedding of s1 and s2
         def inverse_model(phi1, phi2):
@@ -307,6 +297,16 @@ class StateActionPredictor(object):
                                         logits, aindex), name="invloss_real")
         
 
+        # Imagine some actions and states that weren't encountered
+        imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
+        imagined_actions = tf.one_hot(imagined_action_idxs, ac_space)
+        imagined_start_states_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=batch_size, shape=[num_imagined])
+        imagined_phi1 = tf.stop_gradient(tf.gather(phi1, imagined_start_states_idxs), name="stop_gradient_consistency_to_encoder")
+
+        # predict next state for imagined actions
+        with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+            imagined_phi2 = forward_model(imagined_phi1, imagined_actions)
+            
         # compute inverse loss on imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
             imagined_logits = inverse_model(imagined_phi1, imagined_phi2)
@@ -314,6 +314,7 @@ class StateActionPredictor(object):
         self.invloss_imagined = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                         imagined_logits, imagined_action_idxs), name="invloss_imagined")
 
+        # Compute aggregate forward loss
         self.invloss = tf.add(self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")
         
 
