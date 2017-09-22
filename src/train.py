@@ -78,7 +78,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--noReward']
     if noLifeReward:
         base_cmd += ['--noLifeReward']
-    if saveMeta:
+    if save_meta:
         base_cmd += ['--saveMeta']
         print "Okay, will save graph .meta file"
     if pretrain is not None:
