@@ -242,6 +242,7 @@ class StateActionPredictor(object):
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
 
         # feature encoding: phi1, phi2: [None, LEN]
+        print "okay using an imagined weight of", imagined_weight
         
         # settings that don't belong here
         size = 256
