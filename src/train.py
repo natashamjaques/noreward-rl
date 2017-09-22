@@ -38,6 +38,10 @@ parser.add_argument('--default', action='store_true', help="run with default par
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
 parser.add_argument('--saveMeta', action='store_true',
                     help="When saving checkpoints save the meta file as well (necessary for running doom but slows down the process.")
+parser.add_argument('--curiosity', action='store_true',
+                    help="When saving checkpoints save the meta file as well (necessary for running doom but slows down the process.")
+parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
+                    help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -53,7 +57,8 @@ def new_cmd(session, name, cmd, mode, logdir, shell):
 def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
-                    delay=0, savio=False, pretrain=None, save_meta=False):
+                    delay=0, savio=False, pretrain=None, save_meta=False, 
+                    curiosity=False, imagined_weight=0.4):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -81,8 +86,14 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
     if save_meta:
         base_cmd += ['--saveMeta']
         print "Okay, will save graph .meta file"
+    if curiosity:
+        imagined_weight = 0
+        print "Okay, will rely only on curiosity with no imagined actions"
     if pretrain is not None:
         base_cmd += ['--pretrain', pretrain]
+
+    # add imagined weight
+    base_cmd += ['--imagined-weight', imagined_weight]
 
     if remotes is None:
         remotes = ["1"] * num_workers

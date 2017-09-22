@@ -232,10 +232,11 @@ class LSTMPolicy(object):
 
 
 class StateActionPredictor(object):
-    def __init__(self, ob_space, ac_space, designHead='universe'):
+    def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
+        self.imagined_weight = imagined_weight
         self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
@@ -244,7 +245,6 @@ class StateActionPredictor(object):
         
         # settings that don't belong here
         size = 256
-        imagined_weight = 0.4
         batch_size = tf.shape(phi1)[0]
         num_imagined = batch_size
 
