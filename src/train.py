@@ -36,6 +36,8 @@ parser.add_argument('--savio', action='store_true',
                     help="Savio or KNL cpu cluster hacks")
 parser.add_argument('--default', action='store_true', help="run with default params")
 parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (generally ..../train/) to load from.")
+parser.add_argument('--saveMeta', action='store_true',
+                    help="When saving checkpoints save the meta file as well (necessary for running doom but slows down the process.")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -51,7 +53,7 @@ def new_cmd(session, name, cmd, mode, logdir, shell):
 def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
-                    delay=0, savio=False, pretrain=None):
+                    delay=0, savio=False, pretrain=None, save_meta=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -76,6 +78,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         base_cmd += ['--noReward']
     if noLifeReward:
         base_cmd += ['--noLifeReward']
+    if saveMeta:
+        base_cmd += ['--saveMeta']
+        print "Okay, will save graph .meta file"
     if pretrain is not None:
         base_cmd += ['--pretrain', pretrain]
 
@@ -147,7 +152,8 @@ def run():
                                     envWrap=args.envWrap, designHead=args.designHead,
                                     unsup=args.unsup, noReward=args.noReward,
                                     noLifeReward=args.noLifeReward, psPort=psPort,
-                                    delay=delay, savio=args.savio, pretrain=args.pretrain)
+                                    delay=delay, savio=args.savio, pretrain=args.pretrain,
+                                    save_meta=args.saveMeta)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
