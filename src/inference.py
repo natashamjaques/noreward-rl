@@ -39,7 +39,7 @@ def inference(args):
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
                             record=True, noop=args.noop, acRepeat=args.acRepeat)
     numaction = env.action_space.n
-    print "numaction", numaction
+    print('numaction', numaction)
 
     with tf.device("/cpu:0"):
         # define policy network
