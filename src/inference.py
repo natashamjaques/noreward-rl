@@ -31,6 +31,8 @@ def inference(args):
     ckpt = ckpt.split('-')[-1]
     ckpt = indir + '/model.ckpt-' + ckpt
 
+    print('Okay, using environment', args.env_id)
+
     # define environment
     if args.record:
         env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
