@@ -17,32 +17,10 @@ logger.setLevel(logging.INFO)
 
 # Disables write_meta_graph argument, which freezes entire process and is mostly useless.
 class FastSaver(tf.train.Saver):
-    def __init__(self, var_list=None,
-                reshape=False,
-                sharded=False,
-                max_to_keep=5,
-                keep_checkpoint_every_n_hours=10000.0,
-                name=None,
-                restore_sequentially=False,
-                saver_def=None,
-                builder=None,
-                defer_build=False,
-                allow_empty=False,
-                write_version=tf.train.SaverDef.V2,
-                pad_step_number=False,
-                save_relative_paths=False,
-                filename=None,
-                write_meta_graph=False):
-        self.write_meta_graph=write_meta_graph
-        super(FastSaver, self).__init__(var_list, reshape, sharded, max_to_keep, 
-            keep_checkpoint_every_n_hours, name, restore_sequentially, saver_def, 
-            builder, defer_build, allow_empty, write_version, pad_step_number, 
-            save_relative_paths, filename)
-
     def save(self, sess, save_path, global_step=None, latest_filename=None,
              meta_graph_suffix="meta"):
         super(FastSaver, self).save(sess, save_path, global_step, latest_filename,
-                                    meta_graph_suffix, self.write_meta_graph)
+                                    meta_graph_suffix, False)
 
 def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
@@ -68,7 +46,12 @@ def run(args, server):
         variables_to_save = [v for v in tf.all_variables() if not v.name.startswith("local")]
         init_op = tf.initialize_variables(variables_to_save)
         init_all_op = tf.initialize_all_variables()
-    saver = FastSaver(variables_to_save, write_meta_graph=args.saveMeta)
+    
+    if args.saveMeta:
+        saver = tf.train.Saver(variables_to_save)
+    else:
+        saver = FastSaver(variables_to_save)
+    
     if args.pretrain is not None:
         variables_to_restore = [v for v in tf.trainable_variables() if not v.name.startswith("local")]
         pretrain_saver = FastSaver(variables_to_restore)
