@@ -40,6 +40,7 @@ def inference(args):
                             record=True, noop=args.noop, acRepeat=args.acRepeat)
     numaction = env.action_space.n
     print('numaction', numaction)
+    print('env.observation_space.shape', env.observation_space.shape)
 
     with tf.device("/cpu:0"):
         # define policy network
