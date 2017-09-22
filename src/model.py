@@ -244,7 +244,7 @@ class StateActionPredictor(object):
         
         # settings that don't belong here
         size = 256
-        imagined_weight = 1
+        imagined_weight = 0.4
         batch_size = tf.shape(phi1)[0]
         num_imagined = batch_size
 
@@ -315,7 +315,7 @@ class StateActionPredictor(object):
                                         imagined_logits, imagined_action_idxs), name="invloss_imagined")
 
         # Compute aggregate forward loss
-        self.invloss = tf.add(self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")
+        self.invloss = tf.add((1.0 - imagined_weight) * self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")
         
 
         # variable list
