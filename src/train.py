@@ -164,7 +164,7 @@ def run():
                                     unsup=args.unsup, noReward=args.noReward,
                                     noLifeReward=args.noLifeReward, psPort=psPort,
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
-                                    save_meta=args.saveMeta)
+                                    save_meta=args.saveMeta, curiosity=args.curiosity)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
