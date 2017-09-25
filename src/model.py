@@ -297,7 +297,6 @@ class StateActionPredictor(object):
         self.invloss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                         logits, aindex), name="invloss_real")
         
-
         # Imagine some actions and states that weren't encountered
         imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
         imagined_actions = tf.one_hot(imagined_action_idxs, ac_space)
@@ -306,7 +305,7 @@ class StateActionPredictor(object):
 
         # predict next state for imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-            imagined_phi2 = forward_model(imagined_phi1, imagined_actions)
+            imagined_phi2 = tf.stop_gradient(forward_model(imagined_phi1, imagined_actions))
             
         # compute inverse loss on imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
