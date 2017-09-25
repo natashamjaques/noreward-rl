@@ -26,7 +26,7 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
-                  imagined_weight=args.imagined_weight)
+                  imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads)
 
     # logging
     if args.task == 0:
@@ -38,6 +38,10 @@ def run(args, server):
             fid.write('env name: %s\n'%str(env.spec.id))
             fid.write('unsup method type: %s\n'%str(args.unsup))
             fid.write('imagined weight: %s\n'%str(args.imagined_weight))
+            if args.noStopGrads:
+                fid.write('Turning off stop gradients on the forward model')
+            else:
+                fid.write('Gradients are stopped on the forward model')
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:
@@ -168,6 +172,8 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('--saveMeta', action='store_true', help="Save meta graph")
     parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
                     help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning")
+    parser.add_argument('--noStopGrads', action='store_true',
+                    help="Turn off stop gradients on the forward model.")
 
     args = parser.parse_args()
 

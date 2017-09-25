@@ -39,9 +39,11 @@ parser.add_argument('--pretrain', type=str, default=None, help="Checkpoint dir (
 parser.add_argument('--saveMeta', action='store_true',
                     help="When saving checkpoints save the meta file as well (necessary for running doom but slows down the process.")
 parser.add_argument('--curiosity', action='store_true',
-                    help="When saving checkpoints save the meta file as well (necessary for running doom but slows down the process.")
+                    help="Set the weight on imagined samples to 0, making the code equivalent to the original curiosity paper.")
 parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
-                    help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning")
+                    help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning.")
+parser.add_argument('--noStopGrads', action='store_true',
+                    help="Turn off stop gradients on the forward model.")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -58,7 +60,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, save_meta=False, 
-                    curiosity=False, imagined_weight=0.4):
+                    curiosity=False, imagined_weight=0.4, no_stop_grads=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -86,6 +88,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
     if save_meta:
         base_cmd += ['--saveMeta']
         print "Okay, will save graph .meta file"
+    if no_stop_grads:
+        base_cmd += ['--noStopGrads']
+        print "Okay, turning off stop gradients on the forward model"
     if curiosity:
         imagined_weight = 0
         print "Okay, will rely only on curiosity with no imagined actions"
@@ -164,7 +169,8 @@ def run():
                                     unsup=args.unsup, noReward=args.noReward,
                                     noLifeReward=args.noLifeReward, psPort=psPort,
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
-                                    save_meta=args.saveMeta, curiosity=args.curiosity)
+                                    save_meta=args.saveMeta, curiosity=args.curiosity,
+                                    no_stop_grads=args.noStopGrads)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:

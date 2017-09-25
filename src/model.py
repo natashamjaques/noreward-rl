@@ -232,7 +232,8 @@ class LSTMPolicy(object):
 
 
 class StateActionPredictor(object):
-    def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4):
+    def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4,
+                 no_stop_grads=False):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
@@ -305,7 +306,10 @@ class StateActionPredictor(object):
 
         # predict next state for imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
-            imagined_phi2 = tf.stop_gradient(forward_model(imagined_phi1, imagined_actions))
+            if no_stop_grads:
+                imagined_phi2 = forward_model(imagined_phi1, imagined_actions)
+            else:
+                imagined_phi2 = tf.stop_gradient(forward_model(imagined_phi1, imagined_actions))
             
         # compute inverse loss on imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):

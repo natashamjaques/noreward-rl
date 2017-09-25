@@ -240,7 +240,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 class A3C(object):
     def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False,
-                 imagined_weight=0.4):
+                 imagined_weight=0.4, no_stop_grads=False):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -252,6 +252,7 @@ class A3C(object):
         self.envWrap = envWrap
         self.env = env
         self.imagined_weight = imagined_weight
+        self.no_stop_grads = no_stop_grads
 
         predictor = None
         numaction = env.action_space.n
@@ -265,9 +266,12 @@ class A3C(object):
                 if self.unsup:
                     with tf.variable_scope("predictor"):
                         if 'state' in unsupType:
-                            self.ap_network = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType)
+                            self.ap_network = StatePredictor(env.observation_space.shape, numaction, designHead, 
+                                                             unsupType)
                         else:
-                            self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, imagined_weight=self.imagined_weight)
+                            self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, 
+                                                                   imagined_weight=self.imagined_weight, 
+                                                                   no_stop_grads=self.no_stop_grads)
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
@@ -276,9 +280,13 @@ class A3C(object):
                 if self.unsup:
                     with tf.variable_scope("predictor"):
                         if 'state' in unsupType:
-                            self.local_ap_network = predictor = StatePredictor(env.observation_space.shape, numaction, designHead, unsupType)
+                            self.local_ap_network = predictor = StatePredictor(env.observation_space.shape, numaction, 
+                                                                               designHead, unsupType)
                         else:
-                            self.local_ap_network = predictor = StateActionPredictor(env.observation_space.shape, numaction, designHead, imagined_weight=self.imagined_weight)
+                            self.local_ap_network = predictor = StateActionPredictor(env.observation_space.shape, 
+                                                                                     numaction, designHead, 
+                                                                                     imagined_weight=self.imagined_weight,
+                                                                                     no_stop_grads=self.no_stop_grads)
 
             # Computing a3c loss: https://arxiv.org/abs/1506.02438
             self.ac = tf.placeholder(tf.float32, [None, numaction], name="ac")
