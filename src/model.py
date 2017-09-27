@@ -302,7 +302,10 @@ class StateActionPredictor(object):
         imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
         imagined_actions = tf.one_hot(imagined_action_idxs, ac_space)
         imagined_start_states_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=batch_size, shape=[num_imagined])
-        imagined_phi1 = tf.stop_gradient(tf.gather(phi1, imagined_start_states_idxs), name="stop_gradient_consistency_to_encoder")
+        if no_stop_grads:
+            imagined_phi1 = tf.gather(phi1, imagined_start_states_idxs)
+        else:
+            imagined_phi1 = tf.stop_gradient(tf.gather(phi1, imagined_start_states_idxs), name="stop_gradient_consistency_to_encoder")
 
         # predict next state for imagined actions
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
