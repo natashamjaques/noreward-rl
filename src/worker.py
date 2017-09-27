@@ -29,7 +29,7 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
-                  imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads)
+                  imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, bonus_cap=args.bonus_cap)
 
     # logging
     if args.task == 0:
@@ -180,6 +180,8 @@ Setting up Tensorflow for data parallel work
                     help="Turn off stop gradients on the forward model.")
     parser.add_argument('--keepCheckpointEveryNHours', default=10, type=int, 
                         help='Allows the saver to keep a model checkpoint every so often')
+    parser.add_argument('-bc', '--bonus-cap', default=None, type=float,
+                    help="The maximum curiosity bonus the agent can receive.")
 
     args = parser.parse_args()
 

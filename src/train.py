@@ -46,6 +46,8 @@ parser.add_argument('--noStopGrads', action='store_true',
                     help="Turn off stop gradients on the forward model.")
 parser.add_argument('--keepCheckpointEveryNHours', default=10, type=int, 
                     help='Allows the saver to keep a model checkpoint every so often')
+parser.add_argument('-bc', '--bonus-cap', default=None, type=float,
+                    help="The maximum curiosity bonus the agent can receive.")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -63,7 +65,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, save_meta=False, 
                     curiosity=False, imagined_weight=0.4, no_stop_grads=False,
-                    keep_checkpoint_every_n_hours=10):
+                    keep_checkpoint_every_n_hours=10, bonus_cap=None):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -99,6 +101,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         print "Okay, will rely only on curiosity with no imagined actions"
     if pretrain is not None:
         base_cmd += ['--pretrain', pretrain]
+    if bonus_cap is not None:
+        base_cmd += ['--bonus-cap', bonus_cap]
+        print "Okay, will cap curiosity bonus at", bonus_cap
 
     # add imagined weight
     base_cmd += ['--imagined-weight', imagined_weight]
@@ -178,7 +183,8 @@ def run():
                                     save_meta=args.saveMeta, curiosity=args.curiosity,
                                     imagined_weight=args.imagined_weight, 
                                     no_stop_grads=args.noStopGrads, 
-                                    keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours)
+                                    keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours,
+                                    bonus_cap=args.bonus_cap)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
