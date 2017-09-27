@@ -39,7 +39,7 @@ def run(args, server):
             fid.write('unsup method type: %s\n'%str(args.unsup))
             fid.write('imagined weight: %s\n'%str(args.imagined_weight))
             if args.noStopGrads:
-                fid.write('Turning off stop gradients on the forward model')
+                fid.write('Turning off stop gradients on the forward and embedding model')
             else:
                 fid.write('Gradients are stopped on the forward model')
 
