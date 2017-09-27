@@ -44,6 +44,8 @@ parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
                     help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning.")
 parser.add_argument('--noStopGrads', action='store_true',
                     help="Turn off stop gradients on the forward model.")
+parser.add_argument('--keepCheckpointEveryNHours', default=10, type=int, 
+                    help='Allows the saver to keep a model checkpoint every so often')
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -60,7 +62,8 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     mode='tmux', visualise=False, envWrap=False, designHead=None,
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, save_meta=False, 
-                    curiosity=False, imagined_weight=0.4, no_stop_grads=False):
+                    curiosity=False, imagined_weight=0.4, no_stop_grads=False,
+                    keep_checkpoint_every_n_hours=10):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -99,6 +102,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
 
     # add imagined weight
     base_cmd += ['--imagined-weight', imagined_weight]
+
+    # add checkpoint hours
+    base_cmd += ['--keepCheckpointEveryNHours', keep_checkpoint_every_n_hours]
 
     if remotes is None:
         remotes = ["1"] * num_workers
@@ -171,7 +177,8 @@ def run():
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
                                     save_meta=args.saveMeta, curiosity=args.curiosity,
                                     imagined_weight=args.imagined_weight, 
-                                    no_stop_grads=args.noStopGrads)
+                                    no_stop_grads=args.noStopGrads, 
+                                    keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:

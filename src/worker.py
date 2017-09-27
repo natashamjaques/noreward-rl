@@ -17,6 +17,9 @@ logger.setLevel(logging.INFO)
 
 # Disables write_meta_graph argument, which freezes entire process and is mostly useless.
 class FastSaver(tf.train.Saver):
+    def __init__(self, *args, **kwargs):
+        super(FastSaver, self).__init__(*args, **kwargs)
+
     def save(self, sess, save_path, global_step=None, latest_filename=None,
              meta_graph_suffix="meta"):
         super(FastSaver, self).save(sess, save_path, global_step, latest_filename,
@@ -42,6 +45,7 @@ def run(args, server):
                 fid.write('Turning off stop gradients on the forward and embedding model')
             else:
                 fid.write('Gradients are stopped on the forward model')
+            fid.write('Saving a checkpoint every %s hours\n'%str(args.keepCheckpointEveryNHours))
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:
@@ -54,9 +58,9 @@ def run(args, server):
         init_all_op = tf.initialize_all_variables()
     
     if args.saveMeta:
-        saver = tf.train.Saver(variables_to_save)
+        saver = tf.train.Saver(variables_to_save, keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours)
     else:
-        saver = FastSaver(variables_to_save)
+        saver = FastSaver(variables_to_save, keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours)
     
     if args.pretrain is not None:
         variables_to_restore = [v for v in tf.trainable_variables() if not v.name.startswith("local")]
@@ -174,6 +178,8 @@ Setting up Tensorflow for data parallel work
                     help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning")
     parser.add_argument('--noStopGrads', action='store_true',
                     help="Turn off stop gradients on the forward model.")
+    parser.add_argument('--keepCheckpointEveryNHours', default=10, type=int, 
+                        help='Allows the saver to keep a model checkpoint every so often')
 
     args = parser.parse_args()
 
