@@ -43,8 +43,10 @@ parser.add_argument('--curiosity', action='store_true',
 parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
                     help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning.")
 parser.add_argument('--noStopGrads', action='store_true',
-                    help="Turn off stop gradients on the forward model.")
-parser.add_argument('--keepCheckpointEveryNHours', default=10, type=int, 
+                    help="Turn off stop gradients everywhere")
+parser.add_argument('--stopGradsForward', action='store_true',
+                    help="Turn on stop gradients on the forward model.")
+parser.add_argument('--keepCheckpointEveryNHours', default=3, type=int, 
                     help='Allows the saver to keep a model checkpoint every so often')
 parser.add_argument('-bc', '--bonus-cap', default=None, type=float,
                     help="The maximum curiosity bonus the agent can receive.")
@@ -65,7 +67,8 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     unsup=None, noReward=False, noLifeReward=False, psPort=12222,
                     delay=0, savio=False, pretrain=None, save_meta=False, 
                     curiosity=False, imagined_weight=0.4, no_stop_grads=False,
-                    keep_checkpoint_every_n_hours=10, bonus_cap=None):
+                    stop_grads_forward=False, keep_checkpoint_every_n_hours=3, 
+                    bonus_cap=None):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -95,7 +98,10 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         print "Okay, will save graph .meta file"
     if no_stop_grads:
         base_cmd += ['--noStopGrads']
-        print "Okay, turning off stop gradients on the forward model"
+        print "Okay, turning off stop gradients everywhere"
+    if stop_grads_forward:
+        base_cmd += ['--stopGradsForward']
+        print "Okay, turning on stop gradients on the forward model"
     if curiosity:
         imagined_weight = 0
         print "Okay, will rely only on curiosity with no imagined actions"
@@ -182,7 +188,7 @@ def run():
                                     delay=delay, savio=args.savio, pretrain=args.pretrain,
                                     save_meta=args.saveMeta, curiosity=args.curiosity,
                                     imagined_weight=args.imagined_weight, 
-                                    no_stop_grads=args.noStopGrads, 
+                                    no_stop_grads=args.noStopGrads, stop_grads_forward=args.stopGradsForward,
                                     keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours,
                                     bonus_cap=args.bonus_cap)
     if args.dry_run:

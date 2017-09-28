@@ -29,7 +29,8 @@ def run(args, server):
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes, envWrap=args.envWrap, designHead=args.designHead,
                         noLifeReward=args.noLifeReward)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
-                  imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, bonus_cap=args.bonus_cap)
+                  imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, 
+                  stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap)
 
     # logging
     if args.task == 0:
@@ -43,8 +44,10 @@ def run(args, server):
             fid.write('imagined weight: %s\n'%str(args.imagined_weight))
             if args.noStopGrads:
                 fid.write('Turning off stop gradients on the forward and embedding model\n')
+            elif args.stopGradsForward:
+                fid.write('Imagined gradients are stopped on the forward model and the embedding model\n')
             else:
-                fid.write('Gradients are stopped on the forward model\n')
+                fid.write('Imagined gradients are stopped only on the embedding/encoding layers\n')
             fid.write('Saving a checkpoint every %s hours\n'%str(args.keepCheckpointEveryNHours))
 
     # Variable names that start with "local" are not saved in checkpoints.
@@ -177,7 +180,9 @@ Setting up Tensorflow for data parallel work
     parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
                     help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning")
     parser.add_argument('--noStopGrads', action='store_true',
-                    help="Turn off stop gradients on the forward model.")
+                        help="Turn off stop gradients everywhere")
+    parser.add_argument('--stopGradsForward', action='store_true',
+                    help="Turn on stop gradients on the forward model.")
     parser.add_argument('--keepCheckpointEveryNHours', default=10, type=int, 
                         help='Allows the saver to keep a model checkpoint every so often')
     parser.add_argument('-bc', '--bonus-cap', default=None, type=float,

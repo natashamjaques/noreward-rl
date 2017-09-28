@@ -243,7 +243,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
 class A3C(object):
     def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False,
-                 imagined_weight=0.4, no_stop_grads=False, bonus_cap=None):
+                 imagined_weight=0.4, no_stop_grads=False, stop_grads_forward=False, bonus_cap=None):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -256,6 +256,7 @@ class A3C(object):
         self.env = env
         self.imagined_weight = imagined_weight
         self.no_stop_grads = no_stop_grads
+        self.stop_grads_forward = stop_grads_forward
         self.bonus_cap = bonus_cap
 
         predictor = None
@@ -275,7 +276,8 @@ class A3C(object):
                         else:
                             self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, 
                                                                    imagined_weight=self.imagined_weight, 
-                                                                   no_stop_grads=self.no_stop_grads)
+                                                                   no_stop_grads=self.no_stop_grads,
+                                                                   stop_grads_forward=self.stop_grads_forward)
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
@@ -290,7 +292,8 @@ class A3C(object):
                             self.local_ap_network = predictor = StateActionPredictor(env.observation_space.shape, 
                                                                                      numaction, designHead, 
                                                                                      imagined_weight=self.imagined_weight,
-                                                                                     no_stop_grads=self.no_stop_grads)
+                                                                                     no_stop_grads=self.no_stop_grads,
+                                                                                     stop_grads_forward=self.stop_grads_forward)
 
             # Computing a3c loss: https://arxiv.org/abs/1506.02438
             self.ac = tf.placeholder(tf.float32, [None, numaction], name="ac")
