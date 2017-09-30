@@ -161,7 +161,6 @@ def linear(x, size, name, initializer=None, bias_init=0):
     b = tf.get_variable(name + "/b", [size], initializer=tf.constant_initializer(bias_init))
     return tf.matmul(x, w) + b
 
-
 class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space, designHead='universe'):
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space), name='x')
@@ -233,7 +232,8 @@ class LSTMPolicy(object):
 
 class StateActionPredictor(object):
     def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4,
-                 no_stop_grads=False, stop_grads_forward=False, backward_model=False):
+                 no_stop_grads=False, stop_grads_forward=False, backward_model=False,
+                 forward_sizes=[256], inverse_sizes=[256]):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
@@ -246,7 +246,7 @@ class StateActionPredictor(object):
         print('okay using an imagined weight of', imagined_weight)
         
         # settings that don't belong here
-        size = 256
+        output_size = 256
         batch_size = tf.shape(phi1)[0]
         num_imagined = batch_size
 
@@ -276,8 +276,9 @@ class StateActionPredictor(object):
         # Note: no backprop to asample of policy: it is treated as fixed for predictor training
         def forward_model(phi1, asample):
             f = tf.concat(1, [phi1, asample])
-            f = tf.nn.relu(linear(f, size, "f1", normalized_columns_initializer(0.01)))
-            return linear(f, phi1.get_shape()[1].value, "flast", normalized_columns_initializer(0.01))
+            for i,size in enumerate(forward_sizes):
+                f = tf.nn.relu(linear(f, size, "forward_"+str(i), normalized_columns_initializer(0.01)))
+            return linear(f, phi1.get_shape()[1].value, "forward_last", normalized_columns_initializer(0.01))
         self.forward_model = forward_model
         f = forward_model(phi1, asample)
         self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(f, phi2)), name='forwardloss')
@@ -287,8 +288,9 @@ class StateActionPredictor(object):
         # predict action from feature embedding of s1 and s2
         def inverse_model(phi1, phi2):
             g = tf.concat(1,[phi1, phi2])
-            g = tf.nn.relu(linear(g, size, "g1", normalized_columns_initializer(0.01)))
-            return linear(g, ac_space, "glast", normalized_columns_initializer(0.01))
+            for i,size in enumerate(inverse_sizes):
+                g = tf.nn.relu(linear(g, size, "inverse_"+str(i), normalized_columns_initializer(0.01)))
+            return linear(g, ac_space, "inverse_last", normalized_columns_initializer(0.01))
         self.inverse_model = inverse_model
 
         # compute inverse loss on real actions
@@ -326,8 +328,8 @@ class StateActionPredictor(object):
                                         imagined_logits, imagined_action_idxs), name="invloss_imagined")
 
         # Compute aggregate inverses loss
-        self.invloss = tf.add((1.0 - imagined_weight) * self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")
-        
+        self.invloss = tf.add(self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")
+        #(1.0 - imagined_weight) * 
 
         # variable list
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)

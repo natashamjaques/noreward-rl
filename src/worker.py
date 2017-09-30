@@ -50,6 +50,7 @@ def run(args, server):
                 fid.write('Imagined gradients are stopped only on the embedding/encoding layers\n')
             fid.write('Saving a checkpoint every %s hours\n'%str(args.keepCheckpointEveryNHours))
             fid.write('Capping the curiosity reward bonus at %s\n'%str(args.bonus_cap))
+            fid.write('The imagined_weight does not reduce the contribution of real samples to the inverse loss\n')
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:

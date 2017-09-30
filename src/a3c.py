@@ -277,7 +277,9 @@ class A3C(object):
                             self.ap_network = StateActionPredictor(env.observation_space.shape, numaction, designHead, 
                                                                    imagined_weight=self.imagined_weight, 
                                                                    no_stop_grads=self.no_stop_grads,
-                                                                   stop_grads_forward=self.stop_grads_forward)
+                                                                   stop_grads_forward=self.stop_grads_forward,
+                                                                   forward_sizes=constants['FORWARD_SIZES'],
+                                                                   inverse_sizes=constants['INVERSE_SIZES'])
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
@@ -293,7 +295,9 @@ class A3C(object):
                                                                                      numaction, designHead, 
                                                                                      imagined_weight=self.imagined_weight,
                                                                                      no_stop_grads=self.no_stop_grads,
-                                                                                     stop_grads_forward=self.stop_grads_forward)
+                                                                                     stop_grads_forward=self.stop_grads_forward,
+                                                                                     forward_sizes=constants['FORWARD_SIZES'],
+                                                                                     inverse_sizes=constants['INVERSE_SIZES'])
 
             # Computing a3c loss: https://arxiv.org/abs/1506.02438
             self.ac = tf.placeholder(tf.float32, [None, numaction], name="ac")
