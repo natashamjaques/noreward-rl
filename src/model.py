@@ -233,7 +233,7 @@ class LSTMPolicy(object):
 class StateActionPredictor(object):
     def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4,
                  no_stop_grads=False, stop_grads_forward=False, backward_model=False,
-                 forward_sizes=[256], inverse_sizes=[256]):
+                 forward_sizes=[256], inverse_sizes=[256], activate_bug=False):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
@@ -324,8 +324,12 @@ class StateActionPredictor(object):
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
             imagined_logits = inverse_model(imagined_phi1, imagined_phi2)
         self.ainvprobs_imagined = tf.nn.softmax(imagined_logits, dim=-1)
-        self.invloss_imagined = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
-                                        imagined_logits, imagined_action_idxs), name="invloss_imagined")
+        if activate_bug:
+            self.invloss_imagined = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                                   logits, imagined_action_idxs), name="invloss_imagined")
+        else:
+            self.invloss_imagined = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                                    imagined_logits, imagined_action_idxs), name="invloss_imagined")
 
         # Compute aggregate inverses loss
         self.invloss = tf.add(self.invloss_real, imagined_weight * self.invloss_imagined, name="invloss")

@@ -50,6 +50,8 @@ parser.add_argument('--keepCheckpointEveryNHours', default=3, type=int,
                     help='Allows the saver to keep a model checkpoint every so often')
 parser.add_argument('-bc', '--bonus-cap', default=None, type=float,
                     help="The maximum curiosity bonus the agent can receive.")
+parser.add_argument('--activateBug', action='store_true',
+                    help="Turn on the original bug to see what happens")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -68,7 +70,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     delay=0, savio=False, pretrain=None, save_meta=False, 
                     curiosity=False, imagined_weight=0.4, no_stop_grads=False,
                     stop_grads_forward=False, keep_checkpoint_every_n_hours=3, 
-                    bonus_cap=None):
+                    bonus_cap=None, activate_bug=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -104,6 +106,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
         print "Okay, turning on stop gradients on the forward model"
     if curiosity:
         imagined_weight = 0
+        print "Okay, will rely only on curiosity with no imagined actions"
+    if activate_bug:
+        base_cmd += ['--activateBug']
         print "Okay, will rely only on curiosity with no imagined actions"
     if pretrain is not None:
         base_cmd += ['--pretrain', pretrain]
@@ -190,7 +195,7 @@ def run():
                                     imagined_weight=args.imagined_weight, 
                                     no_stop_grads=args.noStopGrads, stop_grads_forward=args.stopGradsForward,
                                     keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours,
-                                    bonus_cap=args.bonus_cap)
+                                    bonus_cap=args.bonus_cap, activate_bug=args.activateBug)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:

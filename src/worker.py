@@ -30,7 +30,7 @@ def run(args, server):
                         noLifeReward=args.noLifeReward)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
                   imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, 
-                  stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap)
+                  stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap, activate_bug=args.activateBug)
 
     # logging
     if args.task == 0:
@@ -51,6 +51,8 @@ def run(args, server):
             fid.write('Saving a checkpoint every %s hours\n'%str(args.keepCheckpointEveryNHours))
             fid.write('Capping the curiosity reward bonus at %s\n'%str(args.bonus_cap))
             fid.write('The imagined_weight does not reduce the contribution of real samples to the inverse loss\n')
+            if args.activateBug:
+                fid.write('The bug is activated!!! Asking it to predict random actions from real states!\n')
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:
@@ -189,6 +191,8 @@ Setting up Tensorflow for data parallel work
                         help='Allows the saver to keep a model checkpoint every so often')
     parser.add_argument('-bc', '--bonus-cap', default=None, type=float,
                     help="The maximum curiosity bonus the agent can receive.")
+    parser.add_argument('--activateBug', action='store_true',
+                    help="Turn on the original bug to see what happens")
 
     args = parser.parse_args()
 
