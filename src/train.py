@@ -40,7 +40,7 @@ parser.add_argument('--saveMeta', action='store_true',
                     help="When saving checkpoints save the meta file as well (necessary for running doom but slows down the process.")
 parser.add_argument('--curiosity', action='store_true',
                     help="Set the weight on imagined samples to 0, making the code equivalent to the original curiosity paper.")
-parser.add_argument('-iw', '--imagined-weight', default=0.4, type=float,
+parser.add_argument('-iw', '--imagined-weight', default=0.5, type=float,
                     help="Weight from 0 to 1 to place on the imagined examples as part of the consistency learning.")
 parser.add_argument('--noStopGrads', action='store_true',
                     help="Turn off stop gradients everywhere")
