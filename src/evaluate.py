@@ -177,7 +177,7 @@ def main(_):
                         help="Preprocess input in env_wrapper (no change in input size or network)")
     parser.add_argument('--designHead', type=str, default='universe',
                         help="Network deign head: nips or nature or doom or universe(default)")
-    parser.add_argument('--num-episodes', type=int, default=1000,
+    parser.add_argument('--num-episodes', type=int, default=100,
                         help="Number of episodes to run")
     parser.add_argument('--noop', action='store_true',
                         help="Add 30-noop for inference too (recommended by Nature paper, don't know?)")
