@@ -32,7 +32,10 @@ def inference(args):
     ckpt = ckpt.split('-')[-1]
     ckpt = indir + '/model.ckpt-' + ckpt
 
+    csv_filename = outdir + args.descriptor + '.csv'
+
     print('Okay, using environment', args.env_id, 'and design head', args.designHead)
+    print('Saving evaluation results to file', csv_filename)
 
     # define environment
     env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
@@ -91,7 +94,11 @@ def inference(args):
             length = 0
             rewards = 0
             mario_distances = np.zeros((args.num_episodes,))
-            eval_df = pd.DataFrame()
+            if os.path.exists(csv_filename):
+                print('Evaluation csv already exists. Loading current version')
+                eval_df = pd.DataFrame.from_csv(csv_filename)
+            else:
+                eval_df = pd.DataFrame()
 
             for i in range(args.num_episodes):
                 print("Starting episode %d" % (i + 1))
@@ -157,7 +164,7 @@ def inference(args):
                         rewards = 0
 
                         if i % 5 == 0:
-                            eval_df.to_csv(outdir + args.descriptor + '.csv')
+                            eval_df.to_csv(csv_filename)
                         break
 
         logger.info('Finished %d true episodes.', args.num_episodes)
@@ -166,7 +173,7 @@ def inference(args):
             np.save(outdir + '/distances.npy', mario_distances)
         env.close()
 
-    eval_df.to_csv(outdir + args.descriptor + '.csv')
+    eval_df.to_csv(csv_filename)
 
 
 def main(_):
