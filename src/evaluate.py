@@ -163,7 +163,7 @@ def inference(args):
             np.save(outdir + '/distances.npy', mario_distances)
         env.close()
 
-    eval_df.to_csv(outdir + args.descriptor + 'csv')
+    eval_df.to_csv(outdir + args.descriptor + '.csv')
 
 
 def main(_):
