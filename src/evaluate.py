@@ -155,6 +155,9 @@ def inference(args):
                         eval_df = eval_df.append(results_dict, ignore_index=True)
                         length = 0
                         rewards = 0
+
+                        if i % 10 == 0:
+                            eval_df.to_csv(outdir + args.descriptor + '.csv')
                         break
 
         logger.info('Finished %d true episodes.', args.num_episodes)
