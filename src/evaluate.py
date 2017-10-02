@@ -156,7 +156,7 @@ def inference(args):
                         length = 0
                         rewards = 0
 
-                        if i % 10 == 0:
+                        if i % 5 == 0:
                             eval_df.to_csv(outdir + args.descriptor + '.csv')
                         break
 
