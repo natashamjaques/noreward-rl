@@ -94,13 +94,17 @@ def inference(args):
             length = 0
             rewards = 0
             mario_distances = np.zeros((args.num_episodes,))
+            
+            eps_to_complete = args.num_episodes
             if os.path.exists(csv_filename):
-                print('Evaluation csv already exists. Loading current version')
                 eval_df = pd.DataFrame.from_csv(csv_filename)
+                num_done = len(eval_df)
+                print('Evaluation csv already exists. Loaded', num_done', rows)
+                eps_to_complete -= num_done
             else:
                 eval_df = pd.DataFrame()
 
-            for i in range(args.num_episodes):
+            for i in range(eps_to_complete):
                 print("Starting episode %d" % (i + 1))
 
                 if args.random:
