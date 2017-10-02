@@ -32,10 +32,7 @@ def inference(args):
     ckpt = ckpt.split('-')[-1]
     ckpt = indir + '/model.ckpt-' + ckpt
 
-    csv_filename = outdir + args.descriptor + '.csv'
-
     print('Okay, using environment', args.env_id, 'and design head', args.designHead)
-    print('Saving evaluation results to file', csv_filename)
 
     # define environment
     env = create_env(args.env_id, client_id='0', remotes=None, envWrap=args.envWrap, designHead=args.designHead,
@@ -43,6 +40,18 @@ def inference(args):
     numaction = env.action_space.n
     print('numaction', numaction)
     print('env.observation_space.shape', env.observation_space.shape)
+
+    # Prepare dataframe for storing results
+    csv_filename = outdir + args.descriptor + '.csv'
+    print('Saving evaluation results to file', csv_filename)
+    eps_to_complete = args.num_episodes
+    if os.path.exists(csv_filename):
+        eval_df = pd.DataFrame.from_csv(csv_filename)
+        num_done = len(eval_df)
+        print('Evaluation csv already exists. Loaded', num_done, 'rows')
+        eps_to_complete -= num_done
+    else:
+        eval_df = pd.DataFrame()
 
     with tf.device("/cpu:0"):
         # define policy network
@@ -94,15 +103,6 @@ def inference(args):
             length = 0
             rewards = 0
             mario_distances = np.zeros((args.num_episodes,))
-            
-            eps_to_complete = args.num_episodes
-            if os.path.exists(csv_filename):
-                eval_df = pd.DataFrame.from_csv(csv_filename)
-                num_done = len(eval_df)
-                print('Evaluation csv already exists. Loaded', num_done, 'rows')
-                eps_to_complete -= num_done
-            else:
-                eval_df = pd.DataFrame()
 
             for i in range(eps_to_complete):
                 print("Starting episode %d" % (i + 1))
