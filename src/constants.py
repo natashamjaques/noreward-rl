@@ -20,6 +20,7 @@ constants = {
 'FORWARD_LOSS_WT': 0.3,  # should be between [0,1]
                           # predloss = ( (1-FORWARD_LOSS_WT) * inv_loss + FORWARD_LOSS_WT * forward_loss) * PREDICTION_LR_SCALE
 'POLICY_NO_BACKPROP_STEPS': 0,  # number of global steps after which we start backpropagating to policy
-'FORWARD_SIZES': [256],         # list of layer sizes for the forward model. If empty will connect directly to predicting embedding.
+'FORWARD_SIZES': [256],         # could be [256]# list of layer sizes for the forward model. If empty will connect directly to predicting embedding.
 'INVERSE_SIZES': [256],         # list of layer sizes for the inverse model. If empty will connect directly to predicting embedding.
+'CONSISTENCY_PREDICTION_BONUS_WT': .005,
 }
