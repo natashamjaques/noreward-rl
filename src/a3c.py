@@ -187,7 +187,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             if predictor is not None:
                 bonus = predictor.pred_bonus(last_state, state, action)
                 if consistency_bonus_weight > 0:
-                    con_bonus = consistency_bonus_weight * predictor.consistency_pred_bonus(s1, asample)
+                    con_bonus = consistency_bonus_weight * predictor.consistency_pred_bonus(last_state, action)
                     bonus += con_bonus
                     ep_consistency_bonus += con_bonus
                 if bonus_cap is not None and bonus > bonus_cap:
