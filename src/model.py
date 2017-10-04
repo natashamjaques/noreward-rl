@@ -241,7 +241,7 @@ class StateActionPredictor(object):
         self.s1 = phi1 = tf.placeholder(tf.float32, input_shape, name="placeholder_s1")
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape, name="placeholder_s2")
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space], name="placeholder_asample")
-        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [1,288], name="placeholder_con_bonus")
+        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [None,None], name="placeholder_con_bonus")
 
         # feature encoding: phi1, phi2: [None, LEN]
         print('okay using an imagined weight of', imagined_weight)
@@ -372,12 +372,9 @@ class StateActionPredictor(object):
     def consistency_pred_bonus(self, s1, asample):
         sess = tf.get_default_session()
         guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: [asample]})
-        print('shape of guessed phi 2', np.shape(guessed_phi2))
-        print('shape of con_bonus_phi_2', self.con_bonus_phi_2.get_shape())
         if len(np.shape(guessed_phi2)) > 2:
             guessed_phi2 = np.reshape(guessed_phi2, [1,-1])
-            print('reshaping guessed_phi2. shape is now', np.shape(guessed_phi2))
-        error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: [guessed_phi2],
+        error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: guessed_phi2,
                                              self.asample: [asample]})
         return error
 
