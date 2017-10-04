@@ -372,7 +372,8 @@ class StateActionPredictor(object):
     def consistency_pred_bonus(self, s1, asample):
         sess = tf.get_default_session()
         guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: [asample]})
-        print "shape of guessed phi 2", np.shape(guessed_phi2)
+        print('shape of guessed phi 2', np.shape(guessed_phi2))
+        print('shape of con_bonus_phi_2', self.con_bonus_phi_2.get_shape())
         if len(np.shape(guessed_phi2)) > 2:
             guessed_phi2 = np.reshape(guessed_phi2, [1,-1])
         error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: [guessed_phi2],
