@@ -241,7 +241,7 @@ class StateActionPredictor(object):
         self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
-        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [1,1,None])
+        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [None,None])
 
         # feature encoding: phi1, phi2: [None, LEN]
         print('okay using an imagined weight of', imagined_weight)
