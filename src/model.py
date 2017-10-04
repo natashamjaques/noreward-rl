@@ -241,6 +241,7 @@ class StateActionPredictor(object):
         self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
+        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [1,1,None])
 
         # feature encoding: phi1, phi2: [None, LEN]
         print('okay using an imagined weight of', imagined_weight)
@@ -299,6 +300,12 @@ class StateActionPredictor(object):
         aindex = tf.argmax(asample, axis=1)  # aindex: [batch_size,]
         self.invloss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                         logits, aindex), name="invloss_real")
+
+        # compute inverse loss on placeholder embedding
+        with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+            con_logits = inverse_model(phi1, self.con_bonus_phi_2)
+        self.con_bonus = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                        con_logits, aindex), name="invloss_real")
         
         # Imagine some actions and states that weren't encountered
         imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
@@ -365,7 +372,7 @@ class StateActionPredictor(object):
     def consistency_pred_bonus(self, s1, asample):
         sess = tf.get_default_session()
         guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: [asample]})
-        error = sess.run(self.invloss_real, {self.s1: [s1], self.s2: [guessed_phi2],
+        error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: [guessed_phi2],
                                              self.asample: [asample]})
         return error
 
