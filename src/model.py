@@ -281,7 +281,7 @@ class StateActionPredictor(object):
             return linear(f, phi1.get_shape()[1].value, "forward_last", normalized_columns_initializer(0.01))
         self.forward_model = forward_model
         self.guessed_phi2 = forward_model(phi1, asample)
-        self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(guessed_phi2, phi2)), name='forwardloss')
+        self.forwardloss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(self.guessed_phi2, phi2)), name='forwardloss')
         self.forwardloss = self.forwardloss * 288.0  # lenFeatures=288. Factored out to make hyperparams not depend on it.
 
         # inverse model: g(phi1,phi2) -> a_inv: [None, ac_space]
@@ -364,7 +364,7 @@ class StateActionPredictor(object):
 
     def consistency_pred_bonus(self, s1, asample):
         sess = tf.get_default_session()
-        guessed_phi2 = sess.fun(guessed_phi2, {self.s1: [s1], self.asample: [asample]})
+        guessed_phi2 = sess.fun(self.guessed_phi2, {self.s1: [s1], self.asample: [asample]})
         error = sess.run(self.invloss_real, {self.s1: [s1], self.s2: [guessed_phi2],
                                              self.asample: [asample]})
         return error
