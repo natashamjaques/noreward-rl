@@ -238,10 +238,10 @@ class StateActionPredictor(object):
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
         self.imagined_weight = imagined_weight
-        self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
-        self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
-        self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
-        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [None,None])
+        self.s1 = phi1 = tf.placeholder(tf.float32, input_shape, name="placeholder_s1")
+        self.s2 = phi2 = tf.placeholder(tf.float32, input_shape, name="placeholder_s2")
+        self.asample = asample = tf.placeholder(tf.float32, [None, ac_space], name="placeholder_asample")
+        self.con_bonus_phi_2 = tf.placeholder(tf.float32, [None,None], name="placeholder_con_bonus")
 
         # feature encoding: phi1, phi2: [None, LEN]
         print('okay using an imagined weight of', imagined_weight)
