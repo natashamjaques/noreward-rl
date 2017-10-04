@@ -367,7 +367,6 @@ class StateActionPredictor(object):
         guessed_phi2 = sess.fun(guessed_phi2, {self.s1: [s1], self.asample: [asample]})
         error = sess.run(self.invloss_real, {self.s1: [s1], self.s2: [guessed_phi2],
                                              self.asample: [asample]})
-        error = error * constants['CONSISTENCY_PREDICTION_BONUS_WT']
         return error
 
 class StatePredictor(object):

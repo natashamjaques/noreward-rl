@@ -110,7 +110,7 @@ class RunnerThread(threading.Thread):
     that would constantly interact with the environment and tell it what to do.  This thread is here.
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictor, envWrap,
-                    noReward, bonus_cap=None):
+                    noReward, bonus_cap=None, consistency_bonus_weight=0.0):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -125,6 +125,7 @@ class RunnerThread(threading.Thread):
         self.envWrap = envWrap
         self.noReward = noReward
         self.bonus_cap = bonus_cap
+        self.consistency_bonus_weight = consistency_bonus_weight
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -138,7 +139,8 @@ class RunnerThread(threading.Thread):
     def _run(self):
         rollout_provider = env_runner(self.env, self.policy, self.num_local_steps,
                                         self.summary_writer, self.visualise, self.predictor,
-                                        self.envWrap, self.noReward, self.bonus_cap)
+                                        self.envWrap, self.noReward, self.bonus_cap,
+                                        consistency_bonus_weight=self.consistency_bonus_weight)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
@@ -148,7 +150,7 @@ class RunnerThread(threading.Thread):
 
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
-                envWrap, noReward, bonus_cap=None):
+                envWrap, noReward, bonus_cap=None, consistency_bonus_weight=0.0):
     """
     The logic of the thread runner.  In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -162,6 +164,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
     if predictor is not None:
         ep_bonus = 0
         life_bonus = 0
+        ep_consistency_bonus = 0
 
     while True:
         terminal_end = False
@@ -183,6 +186,10 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             curr_tuple = [last_state, action, reward, value_, terminal, last_features]
             if predictor is not None:
                 bonus = predictor.pred_bonus(last_state, state, action)
+                if consistency_bonus_weight > 0:
+                    con_bonus = consistency_bonus_weight * predictor.consistency_pred_bonus(s1, asample)
+                    bonus += con_bonus
+                    ep_consistency_bonus += con_bonus
                 if bonus_cap is not None and bonus > bonus_cap:
                     bonus = bonus_cap
                 curr_tuple += [bonus, state]
@@ -228,6 +235,8 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                     if predictor is not None:
                         summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
                         ep_bonus = 0
+                        summary.value.add(tag='global/episode_bonus_consistency', simple_value=float(ep_consistency_bonus))
+                        ep_consistency_bonus = 0
                 summary_writer.add_summary(summary, policy.global_step.eval())
                 summary_writer.flush()
 
@@ -244,7 +253,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 class A3C(object):
     def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False,
                  imagined_weight=0.4, no_stop_grads=False, stop_grads_forward=False, bonus_cap=None,
-                 activate_bug=False):
+                 activate_bug=False, consistency_bonus=0.0):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -260,6 +269,7 @@ class A3C(object):
         self.stop_grads_forward = stop_grads_forward
         self.bonus_cap = bonus_cap
         self.activate_bug = activate_bug
+        self.consistency_bonus = consistency_bonus
 
         predictor = None
         numaction = env.action_space.n
@@ -339,7 +349,8 @@ class A3C(object):
 
 
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
-                                        predictor, envWrap, noReward, bonus_cap)
+                                        predictor, envWrap, noReward, bonus_cap,
+                                        consistency_bonus_weight=self.consistency_bonus)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])

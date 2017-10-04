@@ -22,5 +22,4 @@ constants = {
 'POLICY_NO_BACKPROP_STEPS': 0,  # number of global steps after which we start backpropagating to policy
 'FORWARD_SIZES': [256],         # could be [256]# list of layer sizes for the forward model. If empty will connect directly to predicting embedding.
 'INVERSE_SIZES': [256],         # list of layer sizes for the inverse model. If empty will connect directly to predicting embedding.
-'CONSISTENCY_PREDICTION_BONUS_WT': .005,
 }

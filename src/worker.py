@@ -30,7 +30,8 @@ def run(args, server):
                         noLifeReward=args.noLifeReward)
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
                   imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, 
-                  stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap, activate_bug=args.activateBug)
+                  stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap, activate_bug=args.activateBug,
+                  consistency_bonus=args.consistency_bonus)
 
     # logging
     if args.task == 0:
@@ -53,6 +54,7 @@ def run(args, server):
             fid.write('The imagined_weight does not reduce the contribution of real samples to the inverse loss\n')
             if args.activateBug:
                 fid.write('The bug is activated!!! Asking it to predict random actions from real states!\n')
+            fid.write('Weight of cnsistency bonus given to the policy is %s\n'%str(args.consistency_bonus))
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:
@@ -193,6 +195,8 @@ Setting up Tensorflow for data parallel work
                     help="The maximum curiosity bonus the agent can receive.")
     parser.add_argument('--activateBug', action='store_true',
                     help="Turn on the original bug to see what happens")
+    parser.add_argument('-cb', '--consistency-bonus', default=0.0, type=float,
+                    help="Weight on the consistency bonus given to the policy. Default is 0 so that there is no bonus.")
 
     args = parser.parse_args()
 
