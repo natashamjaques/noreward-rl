@@ -54,6 +54,8 @@ parser.add_argument('--activateBug', action='store_true',
                     help="Turn on the original bug to see what happens")
 parser.add_argument('-cb', '--consistency-bonus', default=0.0, type=float,
                     help="Weight on the consistency bonus given to the policy. Default is 0 so that there is no bonus.")
+parser.add_argument('--imagination4RL', action='store_true',
+                    help="Use imagined actions in training the RL policy.")
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -72,7 +74,8 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     delay=0, savio=False, pretrain=None, save_meta=False, 
                     curiosity=False, imagined_weight=0.4, no_stop_grads=False,
                     stop_grads_forward=False, keep_checkpoint_every_n_hours=3, 
-                    bonus_cap=None, activate_bug=False, consistency_bonus=0):
+                    bonus_cap=None, activate_bug=False, consistency_bonus=0,
+                    imagination4RL=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -117,6 +120,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
     if bonus_cap is not None:
         base_cmd += ['--bonus-cap', bonus_cap]
         print "Okay, will cap curiosity bonus at", bonus_cap
+    if imagination4RL:
+        base_cmd += ['--imagination4RL']
+        print "Okay, using imagined actions to train the RL policy"
 
     # add float params
     base_cmd += ['--imagined-weight', imagined_weight]
@@ -199,7 +205,8 @@ def run():
                                     no_stop_grads=args.noStopGrads, stop_grads_forward=args.stopGradsForward,
                                     keep_checkpoint_every_n_hours=args.keepCheckpointEveryNHours,
                                     bonus_cap=args.bonus_cap, activate_bug=args.activateBug,
-                                    consistency_bonus=args.consistency_bonus)
+                                    consistency_bonus=args.consistency_bonus,
+                                    imagination4RL=args.imagination4RL)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:

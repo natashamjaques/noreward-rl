@@ -31,7 +31,7 @@ def run(args, server):
     trainer = A3C(env, args.task, args.visualise, args.unsup, args.envWrap, args.designHead, args.noReward,
                   imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, 
                   stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap, activate_bug=args.activateBug,
-                  consistency_bonus=args.consistency_bonus)
+                  consistency_bonus=args.consistency_bonus, imagination4RL=args.imagination4RL)
 
     # logging
     if args.task == 0:
@@ -55,6 +55,8 @@ def run(args, server):
             if args.activateBug:
                 fid.write('The bug is activated!!! Asking it to predict random actions from real states!\n')
             fid.write('Weight of cnsistency bonus given to the policy is %s\n'%str(args.consistency_bonus))
+            if args.imagination4RL:
+                fid.write('Using imagined actions to train the RL policy\n')
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:
@@ -197,6 +199,8 @@ Setting up Tensorflow for data parallel work
                     help="Turn on the original bug to see what happens")
     parser.add_argument('-cb', '--consistency-bonus', default=0.0, type=float,
                     help="Weight on the consistency bonus given to the policy. Default is 0 so that there is no bonus.")
+    parser.add_argument('--imagination4RL', action='store_true',
+                    help="Use imagined actions in training the RL policy.")
 
     args = parser.parse_args()
 
