@@ -364,7 +364,7 @@ class StateActionPredictor(object):
 
     def consistency_pred_bonus(self, s1, asample):
         sess = tf.get_default_session()
-        guessed_phi2 = sess.fun(self.guessed_phi2, {self.s1: [s1], self.asample: [asample]})
+        guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: [asample]})
         error = sess.run(self.invloss_real, {self.s1: [s1], self.s2: [guessed_phi2],
                                              self.asample: [asample]})
         return error
