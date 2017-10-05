@@ -208,6 +208,8 @@ class LSTMPolicy(object):
             time_major=False)
         lstm_c, lstm_h = lstm_state
         x = tf.reshape(lstm_outputs, [-1, size])
+        if add_cur_model:
+            x = tf.concat(concat_dim=1,values=[x, self.curiosity_predictions])
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])
         self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
 
@@ -236,6 +238,10 @@ class LSTMPolicy(object):
     def act_from_1step_cur_model(self, ob):
         sess = tf.get_default_session()
         return sess.run(self.cur_model_sample, {self.x: [ob]})
+
+    def predict_curiosity(self, ob):
+        sess = tf.get_default_session()
+        return sess.run(self.curiosity_predictions, {self.x: [ob]})
 
     def act_inference(self, ob, c, h):
         sess = tf.get_default_session()
