@@ -199,7 +199,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 env.render()
 
             curr_tuple = [last_state, action, reward, value_, terminal, last_features]
-            if predictor is not None and not no_policy:
+            if predictor is not None:
                 bonus = predictor.pred_bonus(last_state, state, action)
                 ep_curiosity_bonus += bonus
                 if consistency_bonus_weight > 0:
