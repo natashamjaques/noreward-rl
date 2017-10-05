@@ -503,13 +503,13 @@ class A3C(object):
         feed_dict = {
             self.local_network.x: batch.si,
             self.ac: batch.a,
-            self.adv: batch.adv,
             self.r: batch.r
         }
         if not self.no_policy:
             feed_dict[self.local_network.state_in[0]] = batch.features[0]
             feed_dict[self.local_network.state_in[1]] = batch.features[1]
-        if not self.no_policy or self.add_cur_model:
+            feed_dict[self.adv] = batch.adv
+        if self.no_policy or self.add_cur_model:
             feed_dict[self.local_network.cur_bonus] = batch.cur_bonuses
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
