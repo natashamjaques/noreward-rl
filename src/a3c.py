@@ -267,7 +267,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             if terminal_end:
                 break
 
-        if not terminal_end:
+        if not no_policy and not terminal_end:
             rollout.r = policy.value(last_state, *last_features)
 
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue
@@ -490,7 +490,8 @@ class A3C(object):
         """
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
-        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], clip=self.envWrap)
+        batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], 
+                                clip=self.envWrap, no_policy=self.no_policy)
 
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
