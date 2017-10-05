@@ -20,7 +20,7 @@ def discount(x, gamma):
     """
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_rollout(rollout, gamma, lambda_=1.0, clip=False):
+def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False):
     """
     Given a rollout, compute its returns and the advantage.
     """
@@ -41,18 +41,21 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False):
         rewards_plus_v[:-1] = np.clip(rewards_plus_v[:-1], -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
     batch_r = discount(rewards_plus_v, gamma)[:-1]  # value network target
 
-    # collecting target for policy network
-    rewards = np.asarray(rollout.rewards)
-    if rollout.unsup:
-        rewards += np.asarray(rollout.bonuses)
-    if clip:
-        rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
-    vpred_t = np.asarray(rollout.values + [rollout.r])
-    # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
-    # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
-    # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
-    delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
-    batch_adv = discount(delta_t, gamma * lambda_)
+    if no_policy:
+        batch_adv = None
+    else:
+        # collecting target for policy network
+        rewards = np.asarray(rollout.rewards)
+        if rollout.unsup:
+            rewards += np.asarray(rollout.bonuses)
+        if clip:
+            rewards = np.clip(rewards, -constants['REWARD_CLIP'], constants['REWARD_CLIP'])
+        vpred_t = np.asarray(rollout.values + [rollout.r])
+        # "Generalized Advantage Estimation": https://arxiv.org/abs/1506.02438
+        # Eq (10): delta_t = Rt + gamma*V_{t+1} - V_t
+        # Eq (16): batch_adv_t = delta_t + gamma*delta_{t+1} + gamma^2*delta_{t+2} + ...
+        delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
+        batch_adv = discount(delta_t, gamma * lambda_)
 
     features = rollout.features[0]
 
@@ -213,7 +216,8 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
             rollout.add(*curr_tuple)
             rewards += reward
             length += 1
-            values += value_[0]
+            if not no_policy:
+                values += value_[0]
 
             #if predictor is not None and imagination4RL:
             #    imagined_action = np.random.randint(env.action_space.n)
@@ -499,18 +503,19 @@ class A3C(object):
             self.local_network.x: batch.si,
             self.ac: batch.a,
             self.adv: batch.adv,
-            self.r: batch.r,
-            self.local_network.state_in[0]: batch.features[0],
-            self.local_network.state_in[1]: batch.features[1],
+            self.r: batch.r
         }
+        if not self.no_policy:
+            feed_dict[self.local_network.state_in[0]] = batch.features[0]
+            feed_dict[self.local_network.state_in[1]] = batch.features[1]
+        if not self.no_policy or self.add_cur_model:
+            feed_dict[self.local_network.cur_bonus] = batch.cur_bonuses
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]
             feed_dict[self.local_ap_network.s2] = batch.si[1:]
             feed_dict[self.local_ap_network.asample] = batch.a
             #print "shape of feed dict s1", np.shape(feed_dict[self.local_ap_network.s1])
-        if self.add_cur_model:
-            feed_dict[self.local_network.cur_bonus] = batch.cur_bonuses
 
         fetched = sess.run(fetches, feed_dict=feed_dict)
         if batch.terminal:

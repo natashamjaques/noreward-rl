@@ -60,7 +60,7 @@ def run(args, server):
                 fid.write('Using imagined actions to train the RL policy\n')
             if args.noPolicy:
                 fid.write('Not using RL policy, relying on 1-step curiosity predictor\n')
-            if args.addCurModel:
+            elif args.addCurModel:
                 fid.write('Adding a 1-step curiosity predictor to the policy encoder\n')
 
     # Variable names that start with "local" are not saved in checkpoints.
