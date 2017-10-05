@@ -355,12 +355,12 @@ class A3C(object):
             entropy = - tf.reduce_mean(tf.reduce_sum(prob_tf * log_prob_tf, 1))
             
             # final a3c loss: lr of critic is half of actor
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
-            if self.add_cur_model:
-                if self.no_policy:
-                    self.loss = pi.cur_model_loss
-                else:
-                    self.loss += constants['CUR_MODEL_LOSS_WT'] * pi.cur_model_loss
+            if self.no_policy:
+                self.loss = pi.cur_model_loss
+            elif self.add_cur_model:
+                self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA'] + pi.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
+            else:
+                self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
 
             # compute gradients
             grads = tf.gradients(self.loss * 20.0, pi.var_list)  # batchsize=20. Factored out to make hyperparams not depend on it.

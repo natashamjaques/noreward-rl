@@ -183,7 +183,7 @@ class LSTMPolicy(object):
                 def curiosity_model(x):
                     for i,size in enumerate(constants['CURIOSITY_SIZES']):
                         x = tf.nn.relu(linear(x, size, "cur_model_"+str(i), normalized_columns_initializer(0.01)))
-                    return linear(f, ac_space, "cur_model_last", normalized_columns_initializer(0.01))
+                    return linear(x, ac_space, "cur_model_last", normalized_columns_initializer(0.01))
                 self.curiosity_model = curiosity_model
                 self.curiosity_predictions = curiosity_model(x)
                 self.cur_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(self.curiosity_predictions, self.cur_bonus)), name='cur_model_loss')
