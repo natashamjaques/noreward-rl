@@ -17,9 +17,11 @@ constants = {
                           # set 0.5 for unsup=state
 'PREDICTION_LR_SCALE': 10.0,  # scale lr of predictor wrt to policy network
                               # set 30-50 for unsup=state
-'FORWARD_LOSS_WT': 0.3,  # should be between [0,1]
+'FORWARD_LOSS_WT': 0.2,  # should be between [0,1]
                           # predloss = ( (1-FORWARD_LOSS_WT) * inv_loss + FORWARD_LOSS_WT * forward_loss) * PREDICTION_LR_SCALE
 'POLICY_NO_BACKPROP_STEPS': 0,  # number of global steps after which we start backpropagating to policy
 'FORWARD_SIZES': [256],         # could be [256]# list of layer sizes for the forward model. If empty will connect directly to predicting embedding.
 'INVERSE_SIZES': [256],         # list of layer sizes for the inverse model. If empty will connect directly to predicting embedding.
+'CURIOSITY_SIZES': [256],       # list of layer sizes for the curiosity model. 
+'CUR_MODEL_LOSS_WT': 0.5        # loss placed on the curiosity model
 }

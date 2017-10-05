@@ -162,7 +162,8 @@ def linear(x, size, name, initializer=None, bias_init=0):
     return tf.matmul(x, w) + b
 
 class LSTMPolicy(object):
-    def __init__(self, ob_space, ac_space, designHead='universe'):
+    def __init__(self, ob_space, ac_space, designHead='universe', 
+                 add_cur_model=False):
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space), name='x')
         size = 256
         if designHead == 'nips':
@@ -176,6 +177,18 @@ class LSTMPolicy(object):
         else:
             x = universeHead(x)
 
+        if add_cur_model:
+            with tf.variable_scope("cur_model"):
+                self.cur_bonus = tf.placeholder(tf.float32, [None, ac_space], name='cur_bonus')
+                def curiosity_model(x):
+                    for i,size in enumerate(constants['CURIOSITY_SIZES']):
+                        x = tf.nn.relu(linear(x, size, "cur_model_"+str(i), normalized_columns_initializer(0.01)))
+                    return linear(f, ac_space, "cur_model_last", normalized_columns_initializer(0.01))
+                self.curiosity_model = curiosity_model
+                self.curiosity_predictions = curiosity_model(x)
+                self.cur_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(self.curiosity_predictions, self.cur_bonus)), name='cur_model_loss')
+                self.cur_model_sample = categorical_sample(self.curiosity_predictions, ac_space)[0, :]
+        
         # introduce a "fake" batch dimension of 1 to do LSTM over time dim
         x = tf.expand_dims(x, [0])
         lstm = rnn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)
@@ -219,6 +232,10 @@ class LSTMPolicy(object):
         sess = tf.get_default_session()
         return sess.run([self.sample, self.vf] + self.state_out,
                         {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})
+    
+    def act_from_1step_cur_model(self, ob):
+        sess = tf.get_default_session()
+        return sess.run(self.cur_model_sample, {self.x: [ob]})
 
     def act_inference(self, ob, c, h):
         sess = tf.get_default_session()
