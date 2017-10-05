@@ -167,6 +167,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
         life_bonus = 0
         ep_curiosity_bonus = 0
         ep_consistency_bonus = 0
+        ep_imagination_bonus = 0
 
     while True:
         terminal_end = False
@@ -199,14 +200,16 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 life_bonus += bonus
                 ep_bonus += bonus
 
-                #if imagination4RL:
-
-
             # collect the experience
             rollout.add(*curr_tuple)
             rewards += reward
             length += 1
             values += value_[0]
+
+            #if predictor is not None and imagination4RL:
+            #    imagined_action = np.random.randint(env.action_space.n)
+            #    imagined_con_bonus = consistency_bonus_weight * predictor.consistency_pred_bonus(last_state, imagined_action)
+            #    ep_imagination_bonus += imagined_con_bonus
 
             last_state = state
             last_features = features
