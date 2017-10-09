@@ -20,8 +20,7 @@ def discount(x, gamma):
     """
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False,
-                    add_cur_model=False):
+def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False):
     """
     Given a rollout, compute its returns and the advantage.
     """
@@ -31,10 +30,7 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False,
     else:
         batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
-    if add_cur_model:
-        batch_curiosities = np.asarray(rollout.curiosities)
-    else:
-        batch_curiosities = None
+    batch_bonuses = np.asarray(rollout.bonuses)
 
     # collecting target for value network
     # V_t <-> r_t + gamma*r_{t+1} + ... + gamma^n*r_{t+n} + gamma^{n+1}*V_{n+1}
@@ -63,16 +59,16 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False,
 
     features = rollout.features[0]
 
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, batch_curiosities)
+    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, batch_bonuses)
 
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "curiosities"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "bonuses"])
 
 class PartialRollout(object):
     """
     A piece of a complete rollout.  We run our agent, and process its experience
     once it has processed enough steps.
     """
-    def __init__(self, unsup=False, add_cur_model=False):
+    def __init__(self, unsup=False):
         self.states = []
         self.actions = []
         self.rewards = []
@@ -81,15 +77,12 @@ class PartialRollout(object):
         self.terminal = False
         self.features = []
         self.unsup = unsup
-        self.add_cur_model = add_cur_model
         if self.unsup:
             self.bonuses = []
             self.end_state = None
-        if self.add_cur_model:
-            self.curiosities = []
 
     def add(self, state, action, reward, value, terminal, features,
-                bonus=None, end_state=None, curiosities=None):
+                bonus=None, end_state=None):
         self.states += [state]
         self.actions += [action]
         self.rewards += [reward]
@@ -99,8 +92,6 @@ class PartialRollout(object):
         if self.unsup:
             self.bonuses += [bonus]
             self.end_state = end_state
-        if self.add_cur_model:
-            self.curiosities = curiosities
 
     def extend(self, other):
         assert not self.terminal
@@ -114,8 +105,6 @@ class PartialRollout(object):
         if self.unsup:
             self.bonuses.extend(other.bonuses)
             self.end_state = other.end_state
-        if self.curiosities:
-            self.curiosities.extend(other.curiosities)
 
 class RunnerThread(threading.Thread):
     """
@@ -125,7 +114,7 @@ class RunnerThread(threading.Thread):
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictor, envWrap,
                     noReward, bonus_cap=None, consistency_bonus_weight=0.0,
-                    no_policy=False, add_cur_model=False):
+                    no_policy=False):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -142,7 +131,6 @@ class RunnerThread(threading.Thread):
         self.bonus_cap = bonus_cap
         self.consistency_bonus_weight = consistency_bonus_weight
         self.no_policy = no_policy
-        self.add_cur_model = add_cur_model
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -158,7 +146,7 @@ class RunnerThread(threading.Thread):
                                         self.summary_writer, self.visualise, self.predictor,
                                         self.envWrap, self.noReward, self.bonus_cap,
                                         consistency_bonus_weight=self.consistency_bonus_weight,
-                                        no_policy=self.no_policy, add_cur_model=self.add_cur_model)
+                                        no_policy=self.no_policy)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
@@ -169,7 +157,7 @@ class RunnerThread(threading.Thread):
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 envWrap, noReward, bonus_cap=None, consistency_bonus_weight=0.0,
-                imagination4RL=False, no_policy=False, add_cur_model=False):
+                imagination4RL=False, no_policy=False):
     """
     The logic of the thread runner.  In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -189,7 +177,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
     while True:
         terminal_end = False
-        rollout = PartialRollout(predictor is not None, add_cur_model=add_cur_model)
+        rollout = PartialRollout(predictor is not None)
 
         for _ in range(num_local_steps):
             # run policy
@@ -222,10 +210,6 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 curr_tuple += [bonus, state]
                 life_bonus += bonus
                 ep_bonus += bonus
-
-            if add_cur_model:
-                curiosities = policy.predict_curiosity(last_state)
-                curr_tuple += [curiosities]
 
             # collect the experience
             rollout.add(*curr_tuple)
@@ -272,8 +256,9 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                     if predictor is not None:
                         summary.value.add(tag='global/episode_bonus', simple_value=float(ep_bonus))
                         ep_bonus = 0
-                        summary.value.add(tag='global/episode_bonus_consistency', simple_value=float(ep_consistency_bonus))
-                        ep_consistency_bonus = 0
+                        if consistency_bonus_weight > 0:
+                            summary.value.add(tag='global/episode_bonus_consistency', simple_value=float(ep_consistency_bonus))
+                            ep_consistency_bonus = 0
                         summary.value.add(tag='global/episode_bonus_curiosity', simple_value=float(ep_curiosity_bonus))
                         ep_curiosity_bonus = 0
                 summary_writer.add_summary(summary, policy.global_step.eval())
@@ -372,14 +357,16 @@ class A3C(object):
             vf_loss = 0.5 * tf.reduce_mean(tf.square(pi.vf - self.r))  # Eq (28)
             # 3) entropy to ensure randomness
             entropy = - tf.reduce_mean(tf.reduce_sum(prob_tf * log_prob_tf, 1))
-            
+
+            if self.add_cur_model or self.no_policy:
+                self.cur_bonus = tf.placeholder(tf.float32, [None], name='cur_bonus')
+                cur_pred_for_actual_action = tf.reduce_sum(pi.curiosity_predictions * self.ac, 1)
+                self.cur_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(cur_pred_for_actual_action, self.cur_bonus)), name='cur_model_loss')
+                self.loss = pi.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
+
             # final a3c loss: lr of critic is half of actor
-            if self.no_policy:
-                self.loss = pi.cur_model_loss
-            elif self.add_cur_model:
-                self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA'] + pi.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
-            else:
-                self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
+            if not self.no_policy:
+                self.loss += pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
 
             # compute gradients
             grads = tf.gradients(self.loss * 20.0, pi.var_list)  # batchsize=20. Factored out to make hyperparams not depend on it.
@@ -402,7 +389,7 @@ class A3C(object):
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
                                         predictor, envWrap, noReward, bonus_cap,
                                         consistency_bonus_weight=self.consistency_bonus,
-                                        no_policy=self.no_policy, add_cur_model=self.add_cur_model)
+                                        no_policy=self.no_policy)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])
@@ -526,7 +513,7 @@ class A3C(object):
             feed_dict[self.local_network.state_in[1]] = batch.features[1]
             feed_dict[self.adv] = batch.adv
         if self.no_policy or self.add_cur_model:
-            feed_dict[self.local_network.cur_bonus] = batch.curiosities
+            feed_dict[self.local_network.cur_bonus] = batch.bonuses
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]

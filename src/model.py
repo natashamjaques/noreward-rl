@@ -179,14 +179,12 @@ class LSTMPolicy(object):
 
         if add_cur_model:
             with tf.variable_scope("cur_model"):
-                self.cur_bonus = tf.placeholder(tf.float32, [None, ac_space], name='cur_bonus')
                 def curiosity_model(x):
                     for i,size in enumerate(constants['CURIOSITY_SIZES']):
                         x = tf.nn.relu(linear(x, size, "cur_model_"+str(i), normalized_columns_initializer(0.01)))
                     return linear(x, ac_space, "cur_model_last", normalized_columns_initializer(0.01))
                 self.curiosity_model = curiosity_model
                 self.curiosity_predictions = curiosity_model(x)
-                self.cur_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(self.curiosity_predictions, self.cur_bonus)), name='cur_model_loss')
                 self.cur_model_sample = categorical_sample(self.curiosity_predictions, ac_space)[0, :]
         
         # introduce a "fake" batch dimension of 1 to do LSTM over time dim
