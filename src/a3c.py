@@ -362,7 +362,7 @@ class A3C(object):
                 self.cur_bonus = tf.placeholder(tf.float32, [None], name='cur_bonus')
                 cur_pred_for_actual_action = tf.reduce_sum(pi.curiosity_predictions * self.ac, 1)
                 self.cur_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(cur_pred_for_actual_action, self.cur_bonus)), name='cur_model_loss')
-                self.loss = pi.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
+                self.loss = self.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
 
             # final a3c loss: lr of critic is half of actor
             if not self.no_policy:
