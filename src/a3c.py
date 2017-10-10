@@ -512,7 +512,7 @@ class A3C(object):
             feed_dict[self.local_network.state_in[1]] = batch.features[1]
             feed_dict[self.adv] = batch.adv
         if self.no_policy or self.add_cur_model:
-            feed_dict[self.local_network.cur_bonus] = batch.bonuses
+            feed_dict[self.cur_bonus] = batch.bonuses
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]
