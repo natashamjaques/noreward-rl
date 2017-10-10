@@ -493,8 +493,7 @@ class A3C(object):
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], 
-                                clip=self.envWrap, no_policy=self.no_policy,
-                                add_cur_model=self.add_cur_model)
+                                clip=self.envWrap, no_policy=self.no_policy)
 
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
