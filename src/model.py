@@ -425,7 +425,7 @@ class StateActionPredictor(object):
         guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: [actions]})
         error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: guessed_phi2,
                                              self.asample: [asample]})
-        print "Size of consistency bonus error", np.shape(error)
+        print("Size of consistency bonus error", np.shape(error))
         return error
 
 class StatePredictor(object):
