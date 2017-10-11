@@ -102,7 +102,7 @@ class PartialRollout(object):
             self.bonuses += [bonus]
             self.end_state = end_state
         if self.add_con_model:
-            self.consistencies = consistencies
+            self.consistencies += [consistencies]
 
     def extend(self, other):
         assert not self.terminal
