@@ -342,8 +342,8 @@ class StateActionPredictor(object):
         # compute inverse loss on placeholder embedding
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
             con_logits = inverse_model(phi1, self.con_bonus_phi_2)
-        self.con_bonus_per_action = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
-                                        con_logits, aindex), 1, name="con_bonus_per_action")
+        self.con_bonus_per_action = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                        con_logits, aindex, name="con_bonus_per_action")
         self.con_bonus = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                         con_logits, aindex), name="con_bonus")
         
