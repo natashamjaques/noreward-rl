@@ -33,7 +33,7 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False,
     batch_a = np.asarray(rollout.actions)
     batch_bonuses = np.asarray(rollout.bonuses)
     if add_con_model:
-        batch_consistencies = rollout.consistencies
+        batch_consistencies = np.asarray(rollout.consistencies)
     else:
         batch_consistencies = None
 
@@ -541,6 +541,7 @@ class A3C(object):
             feed_dict[self.cur_bonus] = batch.bonuses
         if self.add_con_model:
             feed_dict[self.con_bonus] = batch.consistencies
+            print('shape of batch consistencies', np.shape(batch.consistencies))
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]
