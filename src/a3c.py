@@ -191,7 +191,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
     while True:
         terminal_end = False
-        rollout = PartialRollout(predictor is not None, add_con_model=self.add_con_model)
+        rollout = PartialRollout(predictor is not None, add_con_model=add_con_model)
 
         for _ in range(num_local_steps):
             # run policy
