@@ -163,7 +163,7 @@ def linear(x, size, name, initializer=None, bias_init=0):
 
 class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space, designHead='universe', 
-                 add_cur_model=False):
+                 add_cur_model=False, add_con_model=False):
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space), name='x')
         size = 256
         if designHead == 'nips':
@@ -186,7 +186,17 @@ class LSTMPolicy(object):
                 self.curiosity_model = curiosity_model
                 self.curiosity_predictions = curiosity_model(x)
                 self.cur_model_sample = categorical_sample(self.curiosity_predictions, ac_space)[0, :]
-        
+
+        if add_con_model:
+            with tf.variable_scope("con_model"):
+                def consistency_model(x):
+                    for i,size in enumerate(constants['CONSISTENCY_SIZES']):
+                        x = tf.nn.relu(linear(x, size, "con_model_"+str(i), normalized_columns_initializer(0.01)))
+                    return linear(x, ac_space, "con_model_last", normalized_columns_initializer(0.01))
+                self.consistency_model = consistency_model
+                self.consistency_predictions = consistency_model(x)
+                self.con_model_sample = categorical_sample(self.consistency_predictions, ac_space)[0, :]
+
         # introduce a "fake" batch dimension of 1 to do LSTM over time dim
         x = tf.expand_dims(x, [0])
         lstm = rnn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)
@@ -206,8 +216,12 @@ class LSTMPolicy(object):
             time_major=False)
         lstm_c, lstm_h = lstm_state
         x = tf.reshape(lstm_outputs, [-1, size])
+        
         if add_cur_model:
             x = tf.concat(concat_dim=1,values=[x, self.curiosity_predictions])
+        if add_con_model:
+            x = tf.concat(concat_dim=1, values=[x, self.consistency_predictions])
+        
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])
         self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
 
@@ -255,6 +269,9 @@ class StateActionPredictor(object):
     def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4,
                  no_stop_grads=False, stop_grads_forward=False, backward_model=False,
                  forward_sizes=[256], inverse_sizes=[256], activate_bug=False):
+        self.ac_space = ac_space
+        self.ob_space = ob_space
+
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
@@ -397,6 +414,18 @@ class StateActionPredictor(object):
             guessed_phi2 = np.reshape(guessed_phi2, [1,-1])
         error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: guessed_phi2,
                                              self.asample: [asample]})
+        return error
+
+    def consistency_bonus_all_actions(self, s1):
+        actions = np.zeros((self.ac_space,self.ac_space))
+        actions[np.arange(self.ac_space), np.arange(self.ac_space)] = 1.
+        np.random.shuffle(actions)
+
+        sess = tf.get_default_session()
+        guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: [actions]})
+        error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: guessed_phi2,
+                                             self.asample: [asample]})
+        print "Size of consistency bonus error", np.shape(error)
         return error
 
 class StatePredictor(object):

@@ -20,7 +20,8 @@ def discount(x, gamma):
     """
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False):
+def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False,
+                    add_con_model=False):
     """
     Given a rollout, compute its returns and the advantage.
     """
@@ -31,6 +32,10 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False):
         batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
     batch_bonuses = np.asarray(rollout.bonuses)
+    if add_con_model:
+        batch_consistencies = rollout.consistencies
+    else:
+        batch_consistencies = None
 
     # collecting target for value network
     # V_t <-> r_t + gamma*r_{t+1} + ... + gamma^n*r_{t+n} + gamma^{n+1}*V_{n+1}
@@ -59,16 +64,17 @@ def process_rollout(rollout, gamma, lambda_=1.0, clip=False, no_policy=False):
 
     features = rollout.features[0]
 
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, batch_bonuses)
+    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features, batch_bonuses, 
+                 batch_consistencies)
 
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "bonuses"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features", "bonuses", "consistencies"])
 
 class PartialRollout(object):
     """
     A piece of a complete rollout.  We run our agent, and process its experience
     once it has processed enough steps.
     """
-    def __init__(self, unsup=False):
+    def __init__(self, unsup=False, add_con_model=False):
         self.states = []
         self.actions = []
         self.rewards = []
@@ -77,12 +83,15 @@ class PartialRollout(object):
         self.terminal = False
         self.features = []
         self.unsup = unsup
+        self.add_con_model = add_con_model
         if self.unsup:
             self.bonuses = []
             self.end_state = None
+        if self.add_con_model:
+            self.consistencies = []
 
     def add(self, state, action, reward, value, terminal, features,
-                bonus=None, end_state=None):
+                bonus=None, end_state=None, consistencies=None):
         self.states += [state]
         self.actions += [action]
         self.rewards += [reward]
@@ -92,6 +101,8 @@ class PartialRollout(object):
         if self.unsup:
             self.bonuses += [bonus]
             self.end_state = end_state
+        if self.add_con_model:
+            self.consistencies = consistencies
 
     def extend(self, other):
         assert not self.terminal
@@ -105,6 +116,8 @@ class PartialRollout(object):
         if self.unsup:
             self.bonuses.extend(other.bonuses)
             self.end_state = other.end_state
+        if self.add_con_model:
+            self.consistencies = other.consistencies
 
 class RunnerThread(threading.Thread):
     """
@@ -114,7 +127,7 @@ class RunnerThread(threading.Thread):
     """
     def __init__(self, env, policy, num_local_steps, visualise, predictor, envWrap,
                     noReward, bonus_cap=None, consistency_bonus_weight=0.0,
-                    no_policy=False):
+                    no_policy=False, add_con_model=False):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)  # ideally, should be 1. Mostly doesn't matter in our case.
         self.num_local_steps = num_local_steps
@@ -131,6 +144,7 @@ class RunnerThread(threading.Thread):
         self.bonus_cap = bonus_cap
         self.consistency_bonus_weight = consistency_bonus_weight
         self.no_policy = no_policy
+        self.add_con_model = add_con_model
 
     def start_runner(self, sess, summary_writer):
         self.sess = sess
@@ -146,7 +160,7 @@ class RunnerThread(threading.Thread):
                                         self.summary_writer, self.visualise, self.predictor,
                                         self.envWrap, self.noReward, self.bonus_cap,
                                         consistency_bonus_weight=self.consistency_bonus_weight,
-                                        no_policy=self.no_policy)
+                                        no_policy=self.no_policy, add_con_model=self.add_con_model)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
             # won't die with it, unless the timeout is set to some large number.  This is an empirical
@@ -157,7 +171,7 @@ class RunnerThread(threading.Thread):
 
 def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 envWrap, noReward, bonus_cap=None, consistency_bonus_weight=0.0,
-                imagination4RL=False, no_policy=False):
+                imagination4RL=False, no_policy=False, add_con_model=False):
     """
     The logic of the thread runner.  In brief, it constantly keeps on running
     the policy, and as long as the rollout exceeds a certain length, the thread
@@ -177,7 +191,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
 
     while True:
         terminal_end = False
-        rollout = PartialRollout(predictor is not None)
+        rollout = PartialRollout(predictor is not None, add_con_model=self.add_con_model)
 
         for _ in range(num_local_steps):
             # run policy
@@ -210,6 +224,10 @@ def env_runner(env, policy, num_local_steps, summary_writer, render, predictor,
                 curr_tuple += [bonus, state]
                 life_bonus += bonus
                 ep_bonus += bonus
+
+            if add_con_model:
+                consistencies = predictor.consistency_bonus_all_actions(last_state)
+                curr_tuple += [consistencies]
 
             # collect the experience
             rollout.add(*curr_tuple)
@@ -278,7 +296,7 @@ class A3C(object):
     def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False,
                  imagined_weight=0.4, no_stop_grads=False, stop_grads_forward=False, bonus_cap=None,
                  activate_bug=False, consistency_bonus=0.0, imagination4RL=False, add_cur_model=False,
-                 no_policy=False):
+                 no_policy=False, add_con_model=False):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -297,6 +315,7 @@ class A3C(object):
         self.consistency_bonus = consistency_bonus
         self.imagination4RL = imagination4RL
         self.add_cur_model = add_cur_model
+        self.add_con_model = add_con_model
         self.no_policy = no_policy
 
         predictor = None
@@ -306,7 +325,7 @@ class A3C(object):
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
                 self.network = LSTMPolicy(env.observation_space.shape, numaction, designHead, 
-                                          add_cur_model=add_cur_model)
+                                          add_cur_model=add_cur_model, add_con_model=add_con_model)
                 self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
                                                    trainable=False)
                 if self.unsup:
@@ -326,7 +345,7 @@ class A3C(object):
         with tf.device(worker_device):
             with tf.variable_scope("local"):
                 self.local_network = pi = LSTMPolicy(env.observation_space.shape, numaction, designHead,
-                                                     add_cur_model=add_cur_model)
+                                                     add_cur_model=add_cur_model, add_con_model=add_con_model)
                 pi.global_step = self.global_step
                 if self.unsup:
                     with tf.variable_scope("predictor"):
@@ -368,6 +387,11 @@ class A3C(object):
             if not self.no_policy:
                 self.loss += pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
 
+            if self.add_con_model:
+                self.con_bonus = tf.placeholder(tf.float32, [None, numaction], name='con_bonus')
+                self.con_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(pi.consistency_predictions, self.con_bonus)), name='con_model_loss')
+                self.loss += self.con_model_loss * constants['CON_MODEL_LOSS_WT']
+
             # compute gradients
             grads = tf.gradients(self.loss * 20.0, pi.var_list)  # batchsize=20. Factored out to make hyperparams not depend on it.
 
@@ -389,7 +413,7 @@ class A3C(object):
             self.runner = RunnerThread(env, pi, constants['ROLLOUT_MAXLEN'], visualise,
                                         predictor, envWrap, noReward, bonus_cap,
                                         consistency_bonus_weight=self.consistency_bonus,
-                                        no_policy=self.no_policy)
+                                        no_policy=self.no_policy, add_con_model=self.add_con_model)
 
             # storing summaries
             bs = tf.to_float(tf.shape(pi.x)[0])
@@ -493,7 +517,7 @@ class A3C(object):
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=constants['GAMMA'], lambda_=constants['LAMBDA'], 
-                                clip=self.envWrap, no_policy=self.no_policy)
+                                clip=self.envWrap, no_policy=self.no_policy, add_con_model=self.add_con_model)
 
         should_compute_summary = self.task == 0 and self.local_steps % 11 == 0
 
@@ -513,6 +537,8 @@ class A3C(object):
             feed_dict[self.adv] = batch.adv
         if self.no_policy or self.add_cur_model:
             feed_dict[self.cur_bonus] = batch.bonuses
+        if self.add_con_model:
+            feed_dict[self.con_bonus] = batch.consistencies
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]
