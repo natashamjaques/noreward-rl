@@ -377,15 +377,17 @@ class A3C(object):
             # 3) entropy to ensure randomness
             entropy = - tf.reduce_mean(tf.reduce_sum(prob_tf * log_prob_tf, 1))
 
+            # final a3c loss: lr of critic is half of actor
+            if not self.no_policy:
+                self.loss = pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
+            else:
+                self.loss = 0
+
             if self.add_cur_model or self.no_policy:
                 self.cur_bonus = tf.placeholder(tf.float32, [None], name='cur_bonus')
                 cur_pred_for_actual_action = tf.reduce_sum(pi.curiosity_predictions * self.ac, 1)
                 self.cur_model_loss = 0.5 * tf.reduce_mean(tf.square(tf.subtract(cur_pred_for_actual_action, self.cur_bonus)), name='cur_model_loss')
-                self.loss = self.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
-
-            # final a3c loss: lr of critic is half of actor
-            if not self.no_policy:
-                self.loss += pi_loss + 0.5 * vf_loss - entropy * constants['ENTROPY_BETA']
+                self.loss += self.cur_model_loss * constants['CUR_MODEL_LOSS_WT']
 
             if self.add_con_model:
                 self.con_bonus = tf.placeholder(tf.float32, [None, numaction], name='con_bonus')
