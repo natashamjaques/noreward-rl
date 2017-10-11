@@ -342,8 +342,10 @@ class StateActionPredictor(object):
         # compute inverse loss on placeholder embedding
         with tf.variable_scope(tf.get_variable_scope(), reuse=True):
             con_logits = inverse_model(phi1, self.con_bonus_phi_2)
+        self.con_bonus_per_action = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+                                        con_logits, aindex), 1, name="con_bonus_per_action")
         self.con_bonus = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
-                                        con_logits, aindex), name="invloss_real")
+                                        con_logits, aindex), name="con_bonus")
         
         # Imagine some actions and states that weren't encountered
         imagined_action_idxs = tf.random_uniform(dtype=tf.int32, minval=0, maxval=ac_space, shape=[num_imagined])
@@ -424,7 +426,7 @@ class StateActionPredictor(object):
 
         sess = tf.get_default_session()
         guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: repeat_s1, self.asample: actions})
-        error = sess.run(self.con_bonus, {self.s1: repeat_s1, self.con_bonus_phi_2: guessed_phi2,
+        error = sess.run(self.con_bonus_per_action, {self.s1: repeat_s1, self.con_bonus_phi_2: guessed_phi2,
                                              self.asample: actions})
         print("Size of consistency bonus error", np.shape(error))
         return error
