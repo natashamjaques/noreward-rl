@@ -541,7 +541,6 @@ class A3C(object):
             feed_dict[self.cur_bonus] = batch.bonuses
         if self.add_con_model:
             feed_dict[self.con_bonus] = batch.consistencies
-            print('shape of batch consistencies', np.shape(batch.consistencies))
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1] = batch.si[:-1]
