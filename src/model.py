@@ -420,10 +420,11 @@ class StateActionPredictor(object):
         actions = np.zeros((self.ac_space,self.ac_space))
         actions[np.arange(self.ac_space), np.arange(self.ac_space)] = 1.
         np.random.shuffle(actions)
+        repeat_s1 = np.tile(s1,(self.ac_space,1))
 
         sess = tf.get_default_session()
-        guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: [s1], self.asample: actions})
-        error = sess.run(self.con_bonus, {self.s1: [s1], self.con_bonus_phi_2: guessed_phi2,
+        guessed_phi2 = sess.run(self.guessed_phi2, {self.s1: repeat_s1, self.asample: actions})
+        error = sess.run(self.con_bonus, {self.s1: repeat_s1, self.con_bonus_phi_2: guessed_phi2,
                                              self.asample: [asample]})
         print("Size of consistency bonus error", np.shape(error))
         return error
