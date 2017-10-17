@@ -264,6 +264,33 @@ class LSTMPolicy(object):
         sess = tf.get_default_session()
         return sess.run(self.vf, {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})[0]
 
+class SupervisedPolicyTrainer(object):
+    def __init__(self, ob_space, ac_space, designHead='universe'):
+        self.ac_space = ac_space
+        self.ob_space = ob_space
+        
+        with tf.variable_scope("policy_trainer"):
+            self.s1 = phi1 = tf.placeholder(tf.float32, input_shape, name="placeholder_s1")
+            self.asample = asample = tf.placeholder(tf.float32, [None, ac_space], name="placeholder_asample")
+
+            if designHead == 'nips':
+                phi1 = nipsHead(phi1)
+            elif designHead == 'nature':
+                phi1 = natureHead(phi1)
+            elif designHead == 'doom':
+                phi1 = doomHead(phi1)
+            elif 'tile' in designHead:
+                phi1 = universeHead(phi1, nConvs=2)
+            else:
+                phi1 = universeHead(phi1)
+
+            def policy_trainer(x):
+                for i,size in enumerate(constants['POLICY_TRAINER_SIZES']):
+                    x = tf.nn.relu(linear(x, size, "policy_trainer_"+str(i), normalized_columns_initializer(0.01)))
+                return linear(x, ac_space, "policy_trainer_last", normalized_columns_initializer(0.01))
+            self.policy_trainer = policy_trainer
+            self.policy_trainer_preds = policy_trainer(phi1)
+            self.policy_trainer_sample = categorical_sample(self.policy_trainer_preds, ac_space)[0, :]
 
 class StateActionPredictor(object):
     def __init__(self, ob_space, ac_space, designHead='universe', imagined_weight=0.4,

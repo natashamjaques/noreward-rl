@@ -23,7 +23,8 @@ constants = {
 'FORWARD_SIZES': [256],         # could be [256]# list of layer sizes for the forward model. If empty will connect directly to predicting embedding.
 'INVERSE_SIZES': [256],         # list of layer sizes for the inverse model. If empty will connect directly to predicting embedding.
 'CURIOSITY_SIZES': [256],       # list of layer sizes for the curiosity model. 
-'CUR_MODEL_LOSS_WT': 0.5,        # loss placed on the curiosity model
-'CONSISTENCY_SIZES': [256],       # list of layer sizes for the curiosity model. 
-'CON_MODEL_LOSS_WT': 0.5        # loss placed on the curiosity model
+'CUR_MODEL_LOSS_WT': 0.5,       # loss placed on the curiosity model
+'CONSISTENCY_SIZES': [256],     # list of layer sizes for the curiosity model. 
+'CON_MODEL_LOSS_WT': 0.5,       # loss placed on the curiosity model
+'POLICY_TRAINER_SIZES': [256],  # sizes of the model used to predict curiosity in order to train the policy
 }
