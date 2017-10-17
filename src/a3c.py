@@ -296,7 +296,7 @@ class A3C(object):
     def __init__(self, env, task, visualise, unsupType, envWrap=False, designHead='universe', noReward=False,
                  imagined_weight=0.4, no_stop_grads=False, stop_grads_forward=False, bonus_cap=None,
                  activate_bug=False, consistency_bonus=0.0, imagination4RL=False, add_cur_model=False,
-                 no_policy=False, add_con_model=False):
+                 no_policy=False, add_con_model=False, policy_trainer=False):
         """
         An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
         Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
@@ -317,6 +317,7 @@ class A3C(object):
         self.add_cur_model = add_cur_model
         self.add_con_model = add_con_model
         self.no_policy = no_policy
+        self.policy_trainer = policy_trainer
 
         predictor = None
         numaction = env.action_space.n

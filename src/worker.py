@@ -32,7 +32,8 @@ def run(args, server):
                   imagined_weight=args.imagined_weight, no_stop_grads=args.noStopGrads, 
                   stop_grads_forward=args.stopGradsForward, bonus_cap=args.bonus_cap, activate_bug=args.activateBug,
                   consistency_bonus=args.consistency_bonus, imagination4RL=args.imagination4RL, 
-                  add_cur_model=args.addCurModel, no_policy=args.noPolicy, add_con_model=args.addConModel)
+                  add_cur_model=args.addCurModel, no_policy=args.noPolicy, add_con_model=args.addConModel,
+                  policy_trainer=args.policyTrainer)
 
     # logging
     if args.task == 0:
@@ -64,6 +65,8 @@ def run(args, server):
                 fid.write('Adding a 1-step curiosity predictor to the policy encoder\n')
             if args.addConModel:
                 fid.write('Adding a 1-step consistency predictor to the policy encoder\n')
+            if args.policyTrainer:
+                fid.write('Using a supervised policy trainer to approximate rewards and train the policy\n')
 
     # Variable names that start with "local" are not saved in checkpoints.
     if use_tf12_api:
@@ -214,6 +217,8 @@ Setting up Tensorflow for data parallel work
                     help="Turn off training of the LSTM policy and just use the curiosity model.")
     parser.add_argument('--addConModel', action='store_true',
                     help="Add a head to the policy encoding layer that makes a prediction about the consistency for that state, action.")
+    parser.add_argument('--policyTrainer', action='store_true',
+                    help="Add a supervised learning model that will approximate the rewards, and use that to train the policy instead.")
 
     args = parser.parse_args()
 

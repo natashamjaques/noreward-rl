@@ -62,6 +62,9 @@ parser.add_argument('--noPolicy', action='store_true',
                     help="Turn off training of the LSTM policy and just use the curiosity model.")
 parser.add_argument('--addConModel', action='store_true',
                     help="Add a head to the policy encoding layer that makes a prediction about the consistency for that state, action.")
+parser.add_argument('--policyTrainer', action='store_true',
+                    help="Add a supervised learning model that will approximate the rewards, and use that to train the policy instead.")
+
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
@@ -82,7 +85,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
                     stop_grads_forward=False, keep_checkpoint_every_n_hours=3, 
                     bonus_cap=None, activate_bug=False, consistency_bonus=0,
                     imagination4RL=False, no_policy=False, add_cur_model=False,
-                    add_con_model=False):
+                    add_con_model=False, policy_trainer=False):
     # for launching the TF workers and for launching tensorboard
     py_cmd = 'python' if savio else sys.executable
     base_cmd = [
@@ -139,6 +142,9 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
     elif add_con_model:
         base_cmd += ['--addConModel']
         print "Okay, adding a 1-step consistency predictor."
+    elif policy_trainer:
+        base_cmd += ['--policyTrainer']
+        print "Okay, using a supervised learning policy trainer to train the policy."
 
     # add float params
     base_cmd += ['--imagined-weight', imagined_weight]
@@ -223,7 +229,8 @@ def run():
                                     bonus_cap=args.bonus_cap, activate_bug=args.activateBug,
                                     consistency_bonus=args.consistency_bonus,
                                     imagination4RL=args.imagination4RL, no_policy=args.noPolicy,
-                                    add_cur_model=args.addCurModel, add_con_model=args.addConModel)
+                                    add_cur_model=args.addCurModel, add_con_model=args.addConModel,
+                                    policy_trainer=args.policyTrainer)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
     else:
